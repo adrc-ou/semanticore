@@ -1,0 +1,33 @@
+{
+ "title": "Canary \u2014 synthetic engine fixture (not a document)",
+ "profile": 2,
+ "lang": "en-US",
+ "producer": "pds tagged-pdf engine",
+ "creator": "workshop selftest",
+ "output": {
+  "2": "out/canary.pdf",
+  "1": "out/canary-ua1.pdf"
+ },
+ "fonts": {
+  "r": "../../fonts/Gelasio/Gelasio-Medium.ttf",
+  "b": "../../fonts/Gelasio/Gelasio-Bold.ttf",
+  "i": "../../fonts/Gelasio/Gelasio-MediumItalic.ttf",
+  "bi": "../../fonts/Gelasio/Gelasio-BoldItalic.ttf"
+ },
+ "geom": {
+  "pw": 396,
+  "ph": 612,
+  "col": 322.0,
+  "v_colx": 37.0,
+  "r_colx": 37.0,
+  "hdr_base": 50.4,
+  "body_base0": 68.0,
+  "pitch": 11.52,
+  "indent_em": 1.0,
+  "body_max": 11.6,
+  "body_min": 9.0,
+  "list_wrap_em": 2.6,
+  "list_bullet_em": 3.35,
+  "bullet_tight": 0.12
+ }
+}

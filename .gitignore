@@ -1,0 +1,24 @@
+# toolchain (rebuild: bin/setup_env.sh)
+venv/
+tools/
+# REPO = TOOLING ONLY. Books are work product, not versioned here:
+#   books/*    real remediation projects (user ships them separately)
+#   kept:      TEMPLATE + canary (synthetic regression fixture)
+books/*
+!books/TEMPLATE/
+!books/canary/
+# generated outputs inside kept dirs:
+books/*/out/
+work/*
+!work/.keep
+**/.gitkeep
+# python
+__pycache__/
+*.pyc
+.venv/
+# os/editor
+.DS_Store
+Thumbs.db
+*.swp
+# local scratch anywhere
+*.tmp

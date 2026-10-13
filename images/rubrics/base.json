@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "scale": {"0": "fail/gate-level problem", "1": "acceptable with visible shortfall", "2": "faithful"},
+  "accept_threshold": 1.6,
+  "hard_gates": [
+    "invented_content_or_missing_source_content",
+    "decisive_text_lost_or_generated",
+    "aspect_crop_or_silhouette_changed_breaking_layout",
+    "style_register_error",
+    "scan_damage_treated_as_content_or_vice_versa"
+  ],
+  "dimensions": {
+    "content_fidelity": {"weight": 0.30, "anchors": {
+      "0": "elements added/removed/misplaced/miscounted",
+      "1": "all elements present; minor placement or proportion drift",
+      "2": "element inventory and placement indistinguishable from source intent"}},
+    "style_fidelity": {"weight": 0.20, "anchors": {
+      "0": "wrong medium/era register (photo->cartoon, engraving->flat)",
+      "1": "right register; linework/hatching/tonal character softened or shifted",
+      "2": "reads as the same plate by the same hand/press"}},
+    "artifact_absence": {"weight": 0.20, "anchors": {
+      "0": "hallucinated textures/seams/extra glyphs, or scan damage retained",
+      "1": "minor residue in low-salience areas",
+      "2": "clean; damage removed, authentic marks preserved"}},
+    "geometry_preserve": {"weight": 0.15, "anchors": {
+      "0": "crop/frame/wrap silhouette moved; straight lines bent",
+      "1": "sub-pixel framing or tiny warp drift",
+      "2": "geometry locked (objective: edge-overlap high, aspect delta 0)"}},
+    "legibility": {"weight": 0.10, "applies_if": "figure contains printed text", "anchors": {
+      "0": "labels unreadable/wrong", "1": "readable after effort",
+      "2": "crisp and correct (or replaced by live text per ladder step 1)"}},
+    "tone_color": {"weight": 0.05, "anchors": {
+      "0": "outside source palette family", "1": "family kept, curve shifted",
+      "2": "objective histogram distance ~source, corrected for descreen"}}
+  },
+  "objective_prechecks": {
+    "tool": "bin/imgctl.py score",
+    "signals": ["aspect_delta", "ssim_source_vs_candidate_downscaled",
+                "edge_overlap", "hist_distance", "laplacian_sharpness_ratio"],
+    "note": "evidence for dimensions, never the verdict alone"
+  },
+  "protocol": {"seeds_per_round": 4, "max_rounds": 3,
+               "escalation": "change technique per failure mode, not just seeds",
+               "on_exhaust": "pick best, open ISSUES row with contact sheet, ask user"}
+}

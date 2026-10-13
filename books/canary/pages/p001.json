@@ -1,0 +1,76 @@
+{
+ "folio": "1",
+ "side": "v",
+ "running_head": "CANARY SYNTHETIC HEAD ONE",
+ "blocks": [
+  {
+   "id": "c-continuation",
+   "kind": "para",
+   "indent": false,
+   "text": "synthetic lead-in proving continuation lines carry no first-line indent even when the fixture text restarts a page.",
+   "lines": [
+    "synthetic lead-in proving continuation lines carry no first-line in-",
+    "dent even when the fixture text restarts a page."
+   ]
+  },
+  {
+   "id": "c-instrument",
+   "kind": "runin-heading",
+   "heading": "Instrument.",
+   "indent": true,
+   "lines": [
+    "Instrument. The fixture keeps calibrated margins, and the Canary",
+    "Named Case remains strong while etc. expands; splits like",
+    "pseudo-",
+    "code or autotesting never leak a visible hyphen into output."
+   ],
+   "text": "{BI|Instrument.} The fixture keeps {EM|calibrated} margins, and the {STR|Canary Named Case} remains strong while {E|etc.|and so forth} expands; splits like pseudocode or autotesting never leak a visible hyphen into output."
+  },
+  {
+   "id": "c-list",
+   "kind": "list",
+   "items": [
+    {
+     "text": "“First synthetic item” carries quoted title style.",
+     "lines": [
+      "“First synthetic item” carries quoted",
+      "title style."
+     ]
+    },
+    {
+     "text": "Second ends a line at an em-dash so—the join adds no space there at all.",
+     "lines": [
+      "Second ends a line at an em-dash so—",
+      "the join adds no space there at all."
+     ]
+    },
+    {
+     "text": "Third keeps real hyphens like knowledge-gathering intact and never breaks at them.",
+     "lines": [
+      "Third keeps real hyphens like knowledge-",
+      "gathering intact and never breaks at them."
+     ],
+     "hard_hyphen_lines": [
+      0
+     ]
+    },
+    {
+     "text": "Fourth stands alone.",
+     "lines": [
+      "Fourth stands alone."
+     ]
+    }
+   ]
+  },
+  {
+   "id": "c-em-split",
+   "kind": "para",
+   "indent": true,
+   "text": "an {EM|intelligible} word splits like {EM|automatic} while keeping fragments intact; the tail returns to plain.",
+   "lines": [
+    "an intelligible word splits like auto-",
+    "matic while keeping fragments intact; the tail returns to plain."
+   ]
+  }
+ ]
+}

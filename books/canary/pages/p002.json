@@ -1,0 +1,98 @@
+{
+ "folio": "2",
+ "side": "r",
+ "running_head": "CANARY SYNTHETIC HEAD TWO",
+ "blocks": [
+  {
+   "id": "k-intro",
+   "kind": "para",
+   "indent": true,
+   "text": "Page two carries the figure machinery: one band, one floating, one deco. The layout must place each precisely and the guard must stay alert.",
+   "lines": [
+    "Page two carries the figure machinery: one band, one floating, one",
+    "deco. The layout must place each precisely and the guard must stay",
+    "alert."
+   ]
+  },
+  {
+   "id": "k-band",
+   "kind": "figure",
+   "src": "assets/band.png",
+   "band": true,
+   "bbox": [
+    0,
+    0,
+    322,
+    110
+   ],
+   "alt": "Synthetic placeholder: five slanted bars inside a frame."
+  },
+  {
+   "id": "k-float",
+   "kind": "figure",
+   "src": "assets/float.png",
+   "band": false,
+   "bbox": [
+    200,
+    0,
+    110,
+    100
+   ],
+   "alt": "Synthetic placeholder: circle above a vertical stem."
+  },
+  {
+   "id": "k-wrap",
+   "kind": "para",
+   "indent": true,
+   "text": "Text flowed beside the floating figure uses per-line widths taken from the model, keeping reading order intact while the column edge steps around the artwork; the model declares each line's measure explicitly, exactly as a printed page shows it, and the engine refuses any overlap that the transcription failed to clear.",
+   "lines": [
+    "Text flowed beside the floating",
+    "figure uses per-line widths taken",
+    "from the model, keeping reading",
+    "order intact while the column",
+    "edge steps around the artwork;",
+    "the model declares each line's",
+    "measure explicitly, exactly as",
+    "a printed page shows it, and the",
+    "engine refuses any overlap that",
+    "the transcription failed to clear."
+   ],
+   "widths": [
+    160.0,
+    160.0,
+    160.0,
+    160.0,
+    160.0,
+    160.0,
+    160.0,
+    160.0,
+    160.0,
+    null
+   ]
+  },
+  {
+   "id": "k-deco",
+   "kind": "figure",
+   "src": "assets/deco.png",
+   "band": true,
+   "bbox": [
+    111,
+    0,
+    100,
+    80
+   ],
+   "alt": "Decorative triangle; no semantic content.",
+   "artifact": true
+  },
+  {
+   "id": "k-tail",
+   "kind": "para",
+   "indent": true,
+   "text": "The triangle above is artifact-marked: it consumes layout rows but never enters the reading order, as befits pure ornament on a remediated page.",
+   "lines": [
+    "The triangle above is artifact-marked: it consumes layout rows but never",
+    "enters the reading order, as befits pure ornament on a remediated page."
+   ]
+  }
+ ]
+}

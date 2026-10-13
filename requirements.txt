@@ -1,0 +1,9 @@
+cffi==2.1.1
+fonttools==4.66.1
+numpy==2.4.6
+pikepdf==10.17.0
+pillow==12.3.0
+pymupdf==1.28.2
+pyphen==0.18.1
+typing-inspection==0.4.4
+typing_extensions==4.16.0
