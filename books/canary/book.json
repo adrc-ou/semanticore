@@ -1,5 +1,5 @@
 {
- "title": "Canary \u2014 synthetic engine fixture (not a document)",
+ "title": "Canary — synthetic engine fixture (not a document)",
  "profile": 2,
  "lang": "en-US",
  "producer": "pds tagged-pdf engine",
@@ -28,6 +28,7 @@
   "body_min": 9.0,
   "list_wrap_em": 2.6,
   "list_bullet_em": 3.35,
-  "bullet_tight": 0.12
+  "bullet_tight": 0.12,
+  "hscale_min": 1.0
  }
 }

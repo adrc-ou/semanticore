@@ -1,0 +1,119 @@
+{
+ "folio": "3",
+ "side": "v",
+ "running_head": "CANARY SYNTHETIC HEAD THREE",
+ "blocks": [
+  {
+   "id": "k-head2",
+   "kind": "heading",
+   "level": 2,
+   "align": "center",
+   "rule": "above",
+   "text": "STRUCTURAL COVERAGE SECTION",
+   "lines": [
+    "STRUCTURAL COVERAGE SECTION"
+   ]
+  },
+  {
+   "id": "k-refpara",
+   "kind": "para",
+   "indent": true,
+   "text": "The fixture table below is cited from here: see {XREF|tbl-k|Table 1} for the pairing, and note{REF|1} beside the marker. A second remark is numbered{REF|2}.",
+   "lines": [
+    "The fixture table below is cited from here: see Table 1",
+    "for the pairing, and note1 beside the marker. A second",
+    "remark is numbered2."
+   ]
+  },
+  {
+   "id": "tbl-k",
+   "kind": "table",
+   "xref_anchor": "tbl-k",
+   "xref_phrase": "Table 1",
+   "cols": [161.0, 161.0],
+   "caption": {
+    "text": "SYNTHETIC PAIRING TABLE",
+    "lines": [
+     "SYNTHETIC PAIRING TABLE"
+    ]
+   },
+   "rows": [
+    [
+     {
+      "text": "Alpha column",
+      "lines": ["Alpha column"],
+      "th": true,
+      "scope": "col",
+      "cid": "ta"
+     },
+     {
+      "text": "Beta column",
+      "lines": ["Beta column"],
+      "th": true,
+      "scope": "col",
+      "cid": "tb"
+     }
+    ],
+    [
+     {
+      "text": "one alpha cell",
+      "lines": ["one alpha", "cell"],
+      "cheaders": ["ta"]
+     },
+     {
+      "text": "one beta cell",
+      "lines": ["one beta cell"],
+      "cheaders": ["tb"]
+     }
+    ]
+   ]
+  },
+  {
+   "id": "k-cols",
+   "kind": "columns",
+   "colw": [155.0, 155.0],
+   "gap": 12.0,
+   "columns": [
+    [
+     {
+      "id": "k-cols-l",
+      "kind": "para",
+      "text": "Left column body.",
+      "lines": ["Left column body."]
+     }
+    ],
+    [
+     {
+      "id": "k-cols-r",
+      "kind": "para",
+      "space_before": 1,
+      "text": "Right column body.",
+      "lines": ["Right column body."]
+     }
+    ]
+   ]
+  },
+  {
+   "id": "k-note1",
+   "kind": "para",
+   "role": "Note",
+   "note_anchor": "1",
+   "note_kind": "Endnote",
+   "text": "1. Synthetic endnote one body.",
+   "lines": [
+    "1. Synthetic endnote one body."
+   ]
+  },
+  {
+   "id": "k-note2",
+   "kind": "para",
+   "role": "Note",
+   "note_anchor": "2",
+   "note_kind": "footnote",
+   "text": "2. Synthetic footnote body.",
+   "lines": [
+    "2. Synthetic footnote body."
+   ]
+  }
+ ]
+}

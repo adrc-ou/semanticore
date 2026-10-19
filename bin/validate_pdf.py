@@ -12,7 +12,9 @@ Core checks (profile-aware):
   outline destinations: structure (profile 2) vs page (profile 1)
   fonts: Type0/CIDFontType2 embedded + ToUnicode on every resource font
   PageLabels decimal start; role counts (--expect); Em/Strong children of P
-  text roundtrip vs book page JSONs (--book): exact non-space match
+  text roundtrip vs book page JSONs (--book): STRICT spec-level decode —
+  ToUnicode-mapped glyphs in content order, BDC ActualText substitution,
+  artifacts skipped, spaces compared. No layout heuristics anywhere.
 Exit 0 iff all pass. Run veraPDF in addition; this tool checks things
 veraPDF does not (roundtrip, counts, engine regressions).
 """
@@ -41,7 +43,7 @@ def strip_markers(t):
     return "".join(m.group(2) if m.group(2) is not None else m.group(3)
                    for m in re.finditer(r"\{(?:[BI]+|EM|STR)\|([^{}]*)\}|"
                                         r"\{E\|([^{}]*)\|[^{}]*\}|([^{]+)", t)
-                   ) if False else re.sub(r"\{(?:B|I|BI|EM|STR)\|([^{}]*)\}",
+                   ) if False else re.sub(r"\{(?:B|I|BI|EM|STR|REF)\|([^{}]*)\}",
                                           r"\1",
                                           re.sub(r"\{E\|([^{}]*)\|[^{}]*\}",
                                                  r"\1", t))
@@ -150,19 +152,28 @@ def main():
     good(f"marked content bijection: {len(ref_pairs)} sequences")
 
     pt = st.ParentTree
-    if int(st.get('/ParentTreeNextKey', -1)) != len(page_objs):
-        fail("ParentTreeNextKey != page count")
+    next_key = int(st.get('/ParentTreeNextKey', -1))
     nums = pt.Nums
     covered = {int(nums[i]) for i in range(0, len(nums), 2)}
-    if covered != set(range(len(page_objs))):
-        fail(f"ParentTree pages covered {covered}")
+    if not covered >= set(range(len(page_objs))):
+        fail(f"ParentTree pages not covered: {sorted(set(range(len(page_objs))) - covered)}")
+    elif next_key < len(page_objs) or max(covered, default=-1) >= next_key:
+        fail(f"ParentTreeNextKey {next_key} vs keys {sorted(covered)}")
     else:
+        holes = 0
         for i in range(0, len(nums), 2):
-            arr = nums[i + 1]
-            for j, slot in enumerate(arr):
-                if slot is None:
-                    fail(f"ParentTree hole page {nums[i]} mcid {j}")
-        good("ParentTree complete, no holes")
+            key, val = int(nums[i]), nums[i + 1]
+            if isinstance(val, pikepdf.Array):
+                for j, slot in enumerate(val):
+                    if slot is None:
+                        fail(f"ParentTree hole page {key} mcid {j}")
+                        holes += 1
+            elif str(val.get('/Type', '')) == '/StructElem':
+                pass          # dedicated annotation struct-parent key (legal)
+            else:
+                fail(f"ParentTree key {key} value neither array nor StructElem")
+        if not holes:
+            good(f"ParentTree complete, no holes ({len(covered)} keys)")
 
     # fonts
     for i, p in enumerate(page_objs):
@@ -279,11 +290,144 @@ def main():
         else:
             good(f"{at} ActualText soft-hyphen spans")
 
-    # text roundtrip vs book
+    # ---- notes & nested alternate text (WTPDF / Acrobat-class gates) ----
+    def kids(e):
+        k = e.get('/K')
+        return [x for x in (k if isinstance(k, Array) else
+                            ([k] if k is not None else []))
+                if hasattr(x, "keys") and '/StructElem' in str(x.get('/Type', ''))]
+
+    # 1) Nested alternate text: /Alt REPLACES a subtree for AT — anything
+    #    Alt-bearing below an Alt-bearing element is dead text (Acrobat
+    #    "nested alternate text"; also traps ActualText).
+    dead = []
+
+    def altwalk(e, inside_alt):
+        if inside_alt and ("/Alt" in e or "/ActualText" in e):
+            dead.append(str(e.get("/S", "?")))
+        for x in kids(e):
+            altwalk(x, inside_alt or "/Alt" in e)
+    altwalk(doc_el, False)
+    if dead:
+        fail(f"NESTED ALTERNATE TEXT: {len(dead)} elements (e.g. {dead[0]}) "
+             f"carry Alt/ActualText inside an /Alt subtree — AT reads the "
+             f"replacement and skips them")
+    else:
+        good("no nested alternate text (every /Alt subtree is Alt-free)")
+
+    # 2) FENote / Reference / /Ref model (UA-2); Annot notes for UA-1.
+    notes, refs, alle = [], [], {}
+
+    def reg(e):
+        alle[e.objgen] = e
+        s = str(e.get("/S", "")).lstrip("/")
+        if s in ("FENote", "Annot"):
+            notes.append(e)
+        if s == "Reference":
+            refs.append(e)
+        for x in kids(e):
+            reg(x)
+    reg(doc_el)
+    for n in notes:
+        if "/Alt" in n:
+            fail("note container carries /Alt (would replace note text for AT)")
+    if ua == "2":
+        for n in (x for x in notes if str(x.get("/S", "")).endswith("FENote")):
+            av = n.get("/A")
+            nt = av.get("/NoteType") if av is not None and hasattr(av, "get") else None
+            if nt is None or str(nt).lstrip("/") not in ("Footnote", "Endnote", "None"):
+                fail(f"FENote {n.objgen} missing /A /O /FENote /NoteType")
+        # /Ref reciprocity: every claim must point at a struct elem that
+        # lists the claim back (veraPDF orphanRefs/ghostRefs analog).
+        npair = 0
+        for e in alle.values():
+            r = e.get("/Ref")
+            if r is None:
+                continue
+            for t in (r if isinstance(r, Array) else [r]):
+                te = alle.get(getattr(t, "objgen", None))
+                if te is None:
+                    fail(f"/Ref of {e.get('/S')} does not target a struct elem")
+                    continue
+                rt = te.get("/Ref")
+                if not any(getattr(x, "objgen", None) == e.objgen
+                           for x in (rt if isinstance(rt, Array) else ([rt] if rt else []))):
+                    fail(f"/Ref {e.get('/S')}->{te.get('/S')} not reciprocal")
+                npair += 1
+        nfe = sum(1 for x in notes if str(x.get("/S", "")).endswith("FENote"))
+        good(f"notes model: {nfe} FENote, {len(refs)} Reference, "
+             f"{npair} reciprocal /Ref associations")
+
+    # ---- Acrobat list-nesting rule (checker divergence, pitfall #48) ----
+    # Acrobat REQUIRES Lbl and LBody to be children of LI, and LI a child of
+    # L — stricter than WTPDF (which also permits Lbl/LBody under other
+    # grouping elements like FENote). We hold to Acrobat's rule so the file
+    # passes the checker our operator runs; a Lbl under a FENote marker fails
+    # here even though veraPDF stays silent.
+    listerrs = []
+
+    def lwalk(e, parent_role):
+        s = str(e.get("/S", "")).lstrip("/")
+        if s in ("Lbl", "LBody") and parent_role != "LI":
+            listerrs.append(f"{s} under {parent_role} (must be child of LI)")
+        if s == "LI" and parent_role != "L":
+            listerrs.append(f"LI under {parent_role} (must be child of L)")
+        for x in kids(e):
+            lwalk(x, s)
+    lwalk(doc_el, "Document")
+    if listerrs:
+        fail(f"LIST NESTING: {len(listerrs)} violation(s), e.g. {listerrs[0]} "
+             f"— Acrobat's Lbl/LBody check; Lbl markers go directly in the "
+             f"parent, never wrapping a FENote/Reference marker")
+    else:
+        good("list nesting: Lbl/LBody only under LI, LI only under L")
+
+    # text roundtrip vs book — STRICT spec-level decode: every glyph code is
+    # mapped through its font's ToUnicode and concatenated in content order,
+    # with BDC ActualText substitution and artifact skipping. NO layout or
+    # gap heuristics: this is what a copy/paste consumer of a strict viewer
+    # gets. Spaces must be real glyphs in the stream or this fails.
     if a.book:
         import json, pathlib
         import pymupdf
         pages = sorted((pathlib.Path(a.book) / "pages").glob("*.json"))
+
+        # ---- pattern consistency: blocks sharing a "pattern" id must carry
+        # identical styling, so the same construct is identical everywhere
+        # (the STYLE-GUIDE anti-drift contract, made machine-enforced). ----
+        STYLE_KEYS = ("kind", "size", "numbering",
+                      "bullet_em", "tab_em", "wrap_em", "item_style", "align",
+                      "indent", "role", "note_kind", "marker", "x_off",
+                      "width", "style", "pitch", "cell_size")
+        groups = {}
+        for pf in pages:
+            for b in json.loads(pf.read_text())["blocks"]:
+                pid = b.get("pattern")
+                if pid:
+                    groups.setdefault(pid, []).append((pf.name, b))
+        drift = []
+        for pid, members in groups.items():
+            ref_name, ref = members[0]
+            for nm, b in members[1:]:
+                for k in STYLE_KEYS:
+                    if b.get(k) != ref.get(k):
+                        drift.append(
+                            f"{pid}: {nm}.{b.get('id')} {k}={b.get(k)!r} "
+                            f"!= {ref_name}.{ref.get('id')} {k}={ref.get(k)!r}")
+        if drift:
+            fail(f"PATTERN DRIFT ({len(drift)}): " + "; ".join(drift[:4]))
+        else:
+            good(f"pattern consistency: {len(groups)} pattern(s), "
+                 f"{sum(len(m) for m in groups.values())} blocks identical")
+
+        def strip_strict(t):
+            # XREF: {XREF|target|display} keeps only the display text visible
+            t = re.sub(r"\{XREF\|[^{}|]*\|([^{}]*)\}", r"\1", t)
+            # E spans: /E is an EXPANSION annotation, not ActualText —
+            # extraction keeps the visible text
+            t = re.sub(r"\{E\|([^{}]*)\|[^{}]*\}", r"\1", t)
+            return re.sub(r"\{(?:B|I|BI|EM|STR|REF)\|([^{}]*)\}", r"\1", t)
+
         parts = []
         for pf in pages:
             pg = json.loads(pf.read_text())
@@ -291,30 +435,125 @@ def main():
                 if b["kind"] == "figure":
                     continue
                 if b["kind"] == "list":
-                    for it in b["items"]:
-                        parts.append("\u2022" + it["text"])
+                    if b.get("numbering") == "arabic":
+                        st0 = int(b.get("numbering_start", 1))
+                        for j, it in enumerate(b["items"]):
+                            parts.append(f"{st0 + j}. " + strip_strict(it["text"]))
+                    else:
+                        mk = b.get("marker", "•") or ""
+                        for it in b["items"]:
+                            parts.append(mk + (" " if mk else "")
+                                         + strip_strict(it["text"]))
+                elif b["kind"] == "table":
+                    cap = b.get("caption")
+                    if cap:
+                        parts.append(strip_strict(cap["text"]))
+                    for r in b["rows"]:
+                        for c in r:
+                            parts.append(strip_strict(c["text"]))
+                elif b["kind"] == "columns":
+                    for col in b["columns"]:
+                        for pb in col:
+                            parts.append(strip_strict(pb["text"]))
                 else:
-                    parts.append(strip_markers(b["text"]))
-        expected = re.sub(r"\s+", "", "".join(parts)).replace("-", "")
+                    parts.append(strip_strict(b["text"]))
+
         d = pymupdf.open(a.pdf)
-        art = set()
-        for pf in pages:
-            pg = json.loads(pf.read_text())
-            art.add(pg.get("running_head") or "\u0000")
-            art.add(str(pg.get("folio", "\u0000")))
-        full = []
-        for pgv in d:
-            for ln in pgv.get_text().splitlines():
-                if ln.strip() in art:
+        lost, unmapped, page_texts = [], [], []
+        tokre = re.compile(
+            r"/(?P<res>F\d+)\s+[\d.]+\s+Tf"
+            r"|/(?P<brole>\w+)\s*<<(?P<bprops>.*?)>>\s*BDC"
+            r"|(?P<emc>\bEMC\b)"
+            r"|<(?P<thex>[0-9A-Fa-f]*)>\s*Tj"
+            r"|\[(?P<arr>[^]]*)\]\s*TJ", re.S)
+        for pno, pg in enumerate(d):
+            fmaps = {}
+            for tup in pg.get_fonts(full=True):
+                o = d.xref_object(tup[0], compressed=True) or ""
+                m = re.search(r"/ToUnicode (\d+) 0 R", o)
+                if not m:
+                    fail(f"page {pno+1}: font {tup[4]} has no ToUnicode")
                     continue
-                full.append(ln)
-        got = re.sub(r"\s+", "", "\n".join(full)).replace("\u00ad", "").replace("-", "")
-        if got != expected:
-            i = next((k for k in range(min(len(got), len(expected)))
-                      if got[k] != expected[k]), min(len(got), len(expected)))
-            fail(f"roundtrip mismatch @{i}: ...{expected[max(0,i-25):i+25]!r} vs ...{got[max(0,i-25):i+25]!r}")
+                cm = d.xref_stream(int(m.group(1))).decode("latin-1")
+                mp = {}
+                for src, dst in re.findall(
+                        r"<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>", cm):
+                    if len(src) != 4:
+                        continue
+                    if len(dst) == 4:
+                        mp[int(src, 16)] = chr(int(dst, 16))
+                    elif len(dst) == 8:
+                        hi, lo = int(dst[:4], 16), int(dst[4:], 16)
+                        mp[int(src, 16)] = chr(0x10000
+                                               + ((hi - 0xD800) << 10)
+                                               + (lo - 0xDC00))
+                fmaps[tup[4].lstrip("/")] = mp
+            cs = b"".join(d.xref_stream(x)
+                          for x in pg.get_contents()).decode("latin-1")
+            out, stack, cur_font = [], [], None
+            for m in tokre.finditer(cs):
+                if m.group("res"):
+                    cur_font = m.group("res")
+                elif m.group("brole"):
+                    at = None
+                    mat = re.search(r"/ActualText\s*<([0-9A-Fa-f]+)>",
+                                    m.group("bprops"))
+                    if mat:
+                        u = bytes.fromhex(mat.group(1)).decode("utf-16-be")
+                        at = u.removeprefix("﻿")
+                    stack.append([m.group("brole") == "Artifact", at, []])
+                elif m.group("emc"):
+                    if not stack:
+                        fail(f"page {pno+1}: unmatched EMC")
+                        continue
+                    art, at, buf = stack.pop()
+                    txt = at if at is not None else "".join(buf)
+                    if not art:
+                        (stack[-1][2].append(txt) if stack
+                         else out.append(txt))
+                else:
+                    s = (m.group("thex") if m.group("thex") is not None
+                         else "".join(re.findall(r"<([0-9A-Fa-f]+)>",
+                                                 m.group("arr"))))
+                    mp = fmaps.get(cur_font or "", {})
+                    buf = []
+                    for i in range(0, len(s), 4):
+                        code = int(s[i:i + 4], 16)
+                        ch = mp.get(code)
+                        if ch is None and code != 0:
+                            unmapped.append((pno + 1, s[i:i + 4]))
+                            ch = ""
+                        buf.append(ch)
+                    txt = "".join(buf)
+                    if not stack:
+                        if txt.strip():
+                            lost.append((pno + 1, txt[:60]))
+                    elif not stack[-1][0]:
+                        stack[-1][2].append(txt)
+            if stack:
+                fail(f"page {pno+1}: unbalanced BDC at EOF")
+            page_texts.append("".join(out))
+        SHY = "\u00ad"   # soft-hyphen: substituted by ActualText, not copy text
+        def canon(s):
+            return re.sub(r"\s+", " ", s.replace(SHY, "")).strip()
+        expected_c, got_c = canon(" ".join(parts)), canon(" ".join(page_texts))
+        if unmapped:
+            fail(f"{len(unmapped)} glyph codes not in ToUnicode "
+                 f"(first: page {unmapped[0][0]} code {unmapped[0][1]})")
+        if lost:
+            fail(f"unmarked text outside any structure element: "
+                 f"p{lost[0][0]} {lost[0][1]!r} ({len(lost)} runs)")
+        if got_c != expected_c:
+            i = next((k for k in range(min(len(got_c), len(expected_c)))
+                      if got_c[k] != expected_c[k]),
+                     min(len(got_c), len(expected_c)))
+            fail(f"STRICT roundtrip mismatch @{i} "
+                 f"(spaces/punctuation ARE compared): "
+                 f"...{expected_c[max(0,i-30):i+30]!r} vs "
+                 f"...{got_c[max(0,i-30):i+30]!r}")
         else:
-            good(f"text roundtrip exact ({len(expected)} non-space chars)")
+            good(f"strict text roundtrip exact, incl. spaces "
+                 f"({len(expected_c)} chars, {len(page_texts)} pages)")
 
     print("RESULT:", "PASS" if P_OK else "FAIL")
     return 0 if P_OK else 1

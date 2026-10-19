@@ -1,5 +1,5 @@
 """Build this book: edit book.json + pages/*.json, run `python build.py`.
-UA_PART=1 env builds the PDF/UA-1 variant instead of the UA-2 default."""
+Ships PDF/UA-2 only (the workshop's sole ship profile)."""
 import os, pathlib, sys
 
 _here = pathlib.Path(__file__).resolve()

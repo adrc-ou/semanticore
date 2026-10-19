@@ -4,7 +4,7 @@ this module embeds fonts, serializes objects and finalizes metadata.
 """
 import zlib
 import pikepdf
-from pikepdf import Dictionary, Array, Name, String
+from pikepdf import Dictionary, Array, Name, String, Integer
 from fontTools.ttLib import TTFont as FT
 from fontTools import subset as ftsubset
 from io import BytesIO
@@ -136,13 +136,16 @@ class Elem:
         self.role = role
         self.attrs = dict(attrs or {})
         self.k = []          # ordered: Elem children or mcid ints or (page, mcid)
+        self.refs = []       # PDF 2.0 /Ref: related structure elements
         self.obj = None
+        self.mcid = None
 
     def add(self, elem):
         self.k.append(elem)
 
     def mark(self, mcid, page=None):
         self.k.append((page, mcid) if page is not None else mcid)
+        self.mcid = mcid
 
 
 # ---------------------------------------------------------------- writer
@@ -177,6 +180,22 @@ class Writer:
         self.pages[page_idx]["cs"].append(
             f"q {num(w)} 0 0 {num(h)} {num(x)} {num(y)} cm {nm} Do Q\n")
 
+    def rule(self, page_idx, x0, y0, x1, y1, width=0.6):
+        """Straight stroke in the content stream (table rules, dividers)."""
+        self.pages[page_idx]["cs"].append(
+            f"{num(width)} w {num(x0)} {num(y0)} m {num(x1)} {num(y1)} l S\n")
+
+    # ---- link annotations (materialized at finalize) ----
+    def struct_link(self, page_idx, rect, link_elem, dest_elem, dest_pi,
+                    dest_x, dest_y, label=None, contents=None):
+        """Register a GoTo link whose visible span is the marked content of
+        link_elem (a /Link StructElem, required for PDF/UA link tagging);
+        the destination targets dest_elem (structure destination under
+        UA-2, page/XYZ under UA-1)."""
+        self.pages[page_idx].setdefault("links", []).append(
+            (rect, link_elem, dest_elem, dest_pi, dest_x, dest_y,
+             label, contents))
+
     def use_font(self, page_idx, font: EmbedFont):
         self.pages[page_idx]["fonts"][font.res_name] = font
         if font not in self.all_fonts:
@@ -201,26 +220,37 @@ class Writer:
         m = p["mcid"]; p["mcid"] += 1
         p["by_mcid"][m] = elem
         elem.mark(m, page_idx)
-        p["cs"].append(f"/{role} <</MCID {m}>> BDC\n")
+        props = f"/MCID {m}"
+        if "ActualText" in elem.attrs:
+            # extraction consumers (copy/paste, reflow) substitute from the
+            # BDC property list; StructElem-only is invisible to them.
+            at = elem.attrs["ActualText"]
+            props += " /ActualText <FEFF" + \
+                     "".join(f"{ord(c):04X}" for c in at) + ">"
+        p["cs"].append(f"/{role} <<{props}>> BDC\n")
         return m
 
     def end(self, page_idx):
         self.pages[page_idx]["cs"].append("EMC\n")
 
     # ---- text ----
-    def show(self, page_idx, res_name, size, x, y, pieces):
-        """pieces: list of (text, extra_shift_pt_before) — same font run."""
+    def show(self, page_idx, res_name, size, x, y, pieces, tz=1.0):
+        """pieces: list of (text, extra_shift_pt_before) — same font run.
+        tz: horizontal text-space scale. Inert in this workshop: gate 6
+        forbids glyph distortion, so callers pass 1.0 and no Tz operator
+        is ever emitted. Kept as a generic writer arg only."""
         p = self.pages[page_idx]
         font = p["fonts"][res_name]
         items = []
         for sub, sh in pieces:
             if sh:
-                items.append(str(num(-sh * 1000.0 / size)))
+                items.append(str(num(-sh * 1000.0 / (size * tz))))
             items.append(hexstr([font.gid.get(c, 0) for c in sub]))
         body = ("[" + " ".join(items) + "] TJ") if len(items) > 1 \
             else (items[0] + " Tj")
+        tzop = "" if tz == 1.0 else f"{num(tz * 100.0)} Tz "
         p["cs"].append(
-            f"BT {font.res_name} {num(size)} Tf 1 0 0 1 {num(x)} {num(y)} Tm {body} ET\n")
+            f"BT {font.res_name} {num(size)} Tf {tzop}1 0 0 1 {num(x)} {num(y)} Tm {body} ET\n")
 
     # ---- finalize ----
     def finalize(self, path, doc_root, title, lang="en-US",
@@ -252,13 +282,14 @@ class Writer:
             p["obj"] = pg
             page_objs.append(pg)
 
+
+
         # ---- structure tree: post-order serialize ----
         pdf2_ns = None
         if ua_part >= 2:
             pdf2_ns = pdf.make_indirect(Dictionary(NS=String(b"http://iso.org/pdf2/ssn")))
 
         def serialize(e):
-            child_objs = []
             k_arr = Array()
             for item in e.k:
                 if isinstance(item, Elem):
@@ -301,6 +332,7 @@ class Writer:
                 d.Pg = child_pg
             if e.attrs.get("PDF2NS"):
                 d.NS = pdf2_ns
+            a_attrs = {}
             for key, val in e.attrs.items():
                 if key in ("ActualText", "Alt", "E", "T"):
                     d[Name("/" + key)] = pdf_text(val)
@@ -312,18 +344,77 @@ class Writer:
                     d.Placement = Name("/" + val)
                 elif key == "BBox":
                     d.BBox = Array([num(v) for v in val])
+                elif key == "ID":
+                    d.ID = pdf_text(val)
+                elif key == "Summary":
+                    d.Summary = pdf_text(val)
+                elif key == "Scope":
+                    a_attrs["Scope"] = Name("/" + {"col": "Column", "row": "Row",
+                                                   "both": "Both", "none": "None"}[val])
+                elif key == "Headers":
+                    a_attrs["Headers"] = Array([pdf_text(h) for h in val])
                 elif key == "A" and isinstance(val, dict):
-                    a = Dictionary()
                     for ak, av in val.items():
-                        a[Name("/" + ak)] = (Name("/" + av) if isinstance(av, str)
-                                            and not av[0].isdigit() else av)
-                    d.A = pdf.make_indirect(a)
+                        a_attrs[ak] = (Name("/" + av) if isinstance(av, str)
+                                       and not av[0].isdigit() else av)
+            if a_attrs:
+                a = Dictionary()
+                for ak, av in a_attrs.items():
+                    a[Name("/" + ak)] = av
+                if ("Scope" in a_attrs or "Headers" in a_attrs) and "O" not in a_attrs:
+                    a.O = Name("/Table")
+                d.A = pdf.make_indirect(a)
             e.obj = pdf.make_indirect(d)
+            if e.refs:
+                refs_pending.append((d, list(e.refs)))
             for item in e.k:
                 if isinstance(item, Elem):
                     item.obj.P = e.obj
 
+        refs_pending = []
         serialize(doc_root)
+        for d, targets in refs_pending:   # /Ref after the whole tree exists
+            arr = Array()
+            for t in targets:
+                arr.append(t.obj)
+            d.Ref = arr
+
+        # ---- link annotations (need serialized elems + page objs) ----
+        next_struct_key = len(self.pages)
+        extra_nums = Array()
+        for i, p in enumerate(self.pages):
+            if not p.get("links"):
+                continue
+            arr = Array()
+            for spec in p["links"]:
+                (rect, link_e, dest_e, dpi, dx, dy, label, contents) = spec
+                act = Dictionary(
+                    S=Name("/GoTo"),
+                    D=Array([page_objs[dpi], Name("/XYZ"), num(dx),
+                             num(dy), NULL()]))
+                if ua_part >= 2:
+                    # ISO 14289-2 8.8 requires a structure destination (/SD);
+                    # keep /D too so every viewer can follow the jump.
+                    act.SD = Array([dest_e.obj, Name("/XYZ"), num(dx),
+                                    num(dy), NULL()])
+                if link_e.obj is not None:
+                    link_e.obj.A = act      # /Link StructElem carries /A
+                d = Dictionary(Type=Name("/Annot"), Subtype=Name("/Link"),
+                               Rect=[num(v) for v in rect],
+                               Border=Array([0, 0, 0]), A=act)
+                if link_e.obj is not None:
+                    # dedicated ParentTree key resolving straight to the
+                    # /Link StructElem (veraPDF/PDFUA annotation lookups)
+                    extra_nums.append(Integer(next_struct_key))
+                    extra_nums.append(link_e.obj)
+                    d[Name("/StructParent")] = Integer(next_struct_key)
+                    next_struct_key += 1
+                if label:
+                    d[Name("/NM")] = String(label)
+                if contents:
+                    d[Name("/Contents")] = String(contents)
+                arr.append(pdf.make_indirect(d))
+            p["obj"].Annots = arr
 
         nums = Array()
         for i, p in enumerate(self.pages):
@@ -333,11 +424,13 @@ class Writer:
                 arr.append(el.obj if el else NULL())
             nums.append(i)
             nums.append(arr)
+        for k in extra_nums:      # annotation struct keys (sorted after pages)
+            nums.append(k)
         parent_tree = Dictionary(Nums=nums)
         stru = pdf.make_indirect(Dictionary(
             Type=Name("/StructTreeRoot"), K=doc_root.obj,
             ParentTree=pdf.make_indirect(parent_tree),
-            ParentTreeNextKey=len(self.pages)))
+            ParentTreeNextKey=next_struct_key))
         # ISO 32000-1 Table 344: the /P of the root element of the hierarchy
         # shall be the structure tree root object itself.
         if doc_root.obj is not None:

@@ -1,137 +1,162 @@
 # pds — accessible-PDF remediation workshop
 
-Mission: turn scanned book pages into tagged, validated accessible PDFs
-(PDF/UA-2 primary, PDF/UA-1 variant; WCAG 2.2 AA via UA-2 + per-SC report),
-including images: preserve-first, diffusion restoration authorized for
-degraded scans (ComfyUI host), accessibility beats fidelity on ties.
-This file is the only preamble a session should need. Deep detail lives in
-`docs/` — read on demand, not upfront.
+Mission: scanned book pages → tagged, validated accessible PDFs (PDF/UA-2
+— the only shipped profile; WCAG 2.2 AA via UA-2 + per-SC report).
+Images: preserve-first, diffusion restoration authorized for degraded
+scans, accessibility beats fidelity on ties.
+This file is the whole preamble a session should need; depth is in `docs/`
+(read on demand). History is in docs/CHANGELOG.md (do not re-read per
+task).
 
-## Hard environment facts (verified; do not re-derive)
+## Operating model — the agent is the engine
 
-- No root. No apt. No system Pango/Cairo → **WeasyPrint/LaTeX/LibreOffice
-  are dead ends.** Engine = our own writer (`lib/`) on pikepdf.
-- Python venv: `./venv/bin/python` (pikepdf, pymupdf, fonttools, pyphen,
-  pillow, numpy). Fresh clone: `./bin/setup_env.sh` rebuilds venv +
-  portable JRE + veraPDF from pinned URLs.
-- Validators on tap: veraPDF (`-f ua1|ua2`), qpdf (via pikepdf Job),
-  MuPDF `pdf_check_structure_tree`, `bin/validate_pdf.py`. PAC/other Java
-  GUIs unavailable (docs/pitfalls.md §D).
-- Fonts: `fonts/Gelasio/` (SIL OFL, 4 styles; default body face — chosen
-  per book by rendering comparison, see pitfalls #22 for the METHOD).
-- Repo scope: **tooling only.** `.gitignore` keeps every real book, scan,
-  output, venv and tools/ unversioned; `books/TEMPLATE` + `books/canary`
-  (synthetic fixture) are the only book-shaped things committed.
+The remediation system is *you* — a capable multimodal model working
+autonomously. Everything in `lib/` and `bin/` is instrumentation:
+instruments produce evidence, they do not steer the agent, and a green
+instrument proves nothing the agent has not personally seen at the
+resolution the judgment requires. Conversely: no checklist can find what
+triage never looked for — coverage comes from your own reading of the
+book, category by category, not from guard firings.
 
-## Layout
+All substantive work runs as the consensus loop in
+**docs/verification-protocol.md**: you triage the book into concrete,
+falsifiable claims backed by re-runnable instrument evidence;
+text-only verifiers independently RE-DERIVE each claim (re-running the
+tools themselves) until consensus; you implement fixes (single writer);
+a swarm validates each fix against before/after evidence, reversing
+consensus-failed fixes; the whole cycle repeats until a full sweep finds
+nothing new; a FINAL SWARM of independent finders — re-deriving, not
+rubber-stamping — must consent that the book is issue-free before you
+call it done. Verifiers never see images; you are the eyes, the
+instruments are the ruler everyone can re-read.
 
-    AGENTS.md           you are here
-    lib/                pdfwriter.py (PDF object engine), typeset.py
-                        (page-JSON → tagged PDF), pds_bootstrap.py
-    bin/                selftest.sh (regression harness — run first, always)
-                        setup_env.sh (fresh-clone bootstrap)
-                        scanctl.py (scan meta/strips/halves/render/diffcols)
-                        validate_pdf.py (structural + roundtrip validator)
-                        pdf_probe.py (decode a build's tree/content for QA)
-                        imgctl.py (image workbench: measure/crop/contact/
-                        score/diffmap/contrast/wrapmap/ledger)
-                        comfy_client.py (ComfyUI API client; HTTP untested)
-    docs/playbook.md    phased process P0–P6, page-JSON schema, gates
-    docs/pitfalls.md    numbered one-line rules, all battle-tested
-    docs/semantics-recipes.md   typography→role tables; first-contact designs
-    docs/image-remediation.md   image policy: ladder, fidelity, rubric,
-                        attempt protocol (§5: bounded attempts, never loop)
-    docs/comfyui-ops.md ComfyUI plan + validate-on-arrival checklist
-    books/              TEMPLATE/ (start here), canary/ (fixture)
-    images/             rubrics/ (7 classes), workflows/, storage.md
-    vendor/checker-src/ README of checker-source URLs (reference, not vendored)
-    tools/ venv/ work/   local install state & scratch (unversioned)
+Work from that model:
+- **Trust your perception.** Read whole pages at native resolution in
+  generous passes; blast through material. Do not grind line-by-line,
+  do not re-verify your own scratch state, do not ask approval for what
+  the scan plainly shows.
+- **Produce claims, not compliance.** The instruments' aborts and PASS
+  lines are inputs to your triage — read them, cite them into the
+  ledger, never treat "the build passed" as a finding.
+- **When you catch a defect class by eye, encode it where it belongs:**
+  a category in the watch-list below and (if mechanical) an instrument
+  — then still sweep the whole book by eye for that class. Examples the
+  operator gives are categories, never checklists.
 
-## You were handed scans and told to process them. Start here.
+## Standing operator rules
 
-1. `./bin/selftest.sh` — must print ALL OK before you trust anything here.
-2. Read the user's brief for WHERE the scans are and any per-job wishes.
-   Formulate NO assumptions about the document's content, structure or
-   genre from this repo — nothing here describes it, deliberately.
-3. `cp -r books/TEMPLATE books/<job-id>/`; record scan provenance (file +
-   page crop box, in px) per page inside `pages/pNNN.json` under a
-   `"source"` key; name files `pNNN` in READING order (folio field carries
-   the printed number; `"side": "v|r"` drives mirror margins).
-4. Run the playbook. P0 measurement → P1 crops → P2 transcription (per
-   page; the parallelizable step) → P3 CROSS-PAGE PASSES (heading census,
-   style/pattern census, figure classification, note pairing — this is
-   where meaning that spans pages gets decided; do not skip or defer) →
-   P4 config → P5 build+validate → P6 visual QA.
-5. Every uncertain reading → ISSUES.md row with the crop path; open rows
-   BLOCK the final build — ask the user, attaching the crop. Every image →
-   IMAGES.md ledger per docs/image-remediation.md. Never guess glyphs,
-   never accept an unviewed generated image, never "fix" source typos
-   silently.
-6. Ship only when: validate_pdf PASS + veraPDF profile PASS + qpdf clean +
-   roundtrip exact + montage visual pass + ISSUES.md has no un-asked rows.
+- **Maximize accessibility, always.** Real structure over visual mimicry
+  (engine tables, genuine heading roles, structural destinations, real
+  text, navigable notes); advanced PDF features wherever they improve
+  access and survive validation. Faithful-to-scan vs better-for-AT →
+  better-for-AT wins; record the reasoning in the book's STYLE-GUIDE.
+- **One deliverable: the UA-2 file.** The UA-1 code path exists only for
+  the canary regression fixture.
+- **Plain English to the operator.** Never surface internal vocabulary
+  (phase codes, file/tool names, process state) in reports; describe
+  work by what it accomplishes.
+- **Verbatim copy is absolute** (operator standing requirement): the
+  printed source's exact words, spelling and punctuation ship; verify
+  word-for-word over the WHOLE document before hand-off.
+- **Perfectionism is the contract.** World-class e-text, pixel-level
+  obsession, verify against disk and render rather than notes, re-read
+  anything you have not personally seen at required resolution.
+- **No images in subagent contexts. Ever — not even small crops.**
+  Image load folds subagent windows; folded agents re-verify scratch
+  state and livelock (observed: hours burned on it), and crops add
+  selection bias anyway (the primary chose the frame). Swarms verify
+  TEXT evidence: instrument outputs, dumps, ledgers — verifiers
+  RE-RUN the tools rather than looking at anything (protocol).
+  Perception is the main agent's channel (plus the operator for
+  disputes); everything downstream of an observation must be stated as
+  re-runnable text. Swarms are always fine for image-free work.
 
-## Non-negotiable gates
+## What to be alert for (defect categories; how-tos in recipes/pitfalls)
 
-1. `bin/selftest.sh` ALL OK after every `lib/` or `bin/` edit. Approved
-   engine-output changes only: inspect diff, `./bin/selftest.sh
-   --update-goldens`, say WHY in the commit. Never re-seize to silence
-   unexplained drift.
-2. Page JSON self-respects: engine asserts joined line-table == text
-   (soft vs real EOL hyphens are declared, not inferred — `hard_hyphen_lines`).
-3. Layout collisions abort builds by design: fix the MODEL (widths,
-   indents, band, order), never the guard.
-4. Structure semantics are CONTEXTUAL decisions (heading levels from the
-   whole-document census; Em vs Strong vs quoted-title from function),
-   recorded in the book's STYLE-GUIDE.md as you go — that file is the
-   anti-drift contract for multi-session jobs.
+1. **Copy is verbatim** — word-, spelling-, punctuation-for-word;
+   source typos preserved [sic]; only speck-resolved punctuation and
+   justified-space normalization deviate, both logged. Verify by a
+   fresh re-read against the scan (protocol), never internal asserts.
+   Re-read efficiently: to check one line, pull the narrow strip around
+   it (scanctl strip / imgctl crop at the page_box + local offset),
+   compare text-to-text, and cite the line's quote as its anchor — do
+   not re-read the whole page per line, and never re-transcribe from
+   memory. Full-page re-reads are for the one-time V-pass and for pages
+   a fix actually touched.
+2. **Spaces are copy** — every join (word, line, block) must be a real
+   space glyph; strict decode (validate_pdf --book) is the only trusted
+   extraction test — MuPDF gap inference hides this class.
+3. **Nothing overflows; nothing occludes** — spill and text-over-text
+   are WCAG failures structure-checkers cannot see; zoomed visual sign-off
+   per page.
+4. **Layout fidelity is measured, not eyeballed** — grid, leading, sizes
+   from cap/x-height measurement, alignment, indents, rules, display
+   sizes; glyph distortion never; one size per table; recurring
+   constructs share one measured pattern set.
+5. **Semantics from function** — heading levels from whole-document
+   census; Em vs Strong vs title-quotes by role; lists recognized by
+   content, not decoration (undecorated credits/rosters are lists).
+6. **Notes and cross-references are navigable structures** — verified
+   WTPDF designs (marks, note roles, reciprocal associations,
+   bidirectional links; forward-only for figure refs) live in
+   docs/semantics-recipes.md; reproduce them, don't re-derive, and never
+   hide note text behind replacement alt text.
+7. **Blank pages** — trim edges, preserve interior blanks.
+8. **Images** — ladder (live text > vector > restoration > crop);
+   bounded attempts (≤4 seeds × ≤3 rounds, escalate technique); every
+   candidate viewed at native res against the class rubric; text-over-art
+   contrast ≥4.5:1; handwriting/stickers excluded by operator ruling,
+   ledgers in IMAGES.md.
+9. **Verbatim, navigable, faithful, structured, measured** — when triaging
+   a new book, hunt each category explicitly on every page; a category
+   you did not look for is a category you will ship broken.
 
-## Image work in one breath (full policy: docs/image-remediation.md)
+## Instrumentation (evidence producers)
 
-- Ladder: live text > vector > restored raster (diffusion OK) > faithful
-  crop. Restoration must be justifiable against the source crop; palette
-  from measurement; no invented content; handwriting/scan damage excluded.
-- Engine figures: `kind:"figure"` blocks (band | floating | artifact),
-  images embedded with `/Figure /Alt /Lang /Placement /BBox`; wrap =
-  per-line `widths`/`indents` in the transcription.
-- Generation loop: ≤4 seeds × ≤3 rounds, escalate technique not luck;
-  review EVERY candidate (contact sheet + native crops) against
-  `images/rubrics/<class>.json` gates+weights; accept ≥1.6 + clean gates
-  else best-of + ISSUES row; ledger every decision.
-- WCAG wins ties: `imgctl contrast` audits text-over-art ≥4.5:1; adjust
-  the art zone, never the requirement.
-- ComfyUI machine arrives separately: follow docs/comfyui-ops.md
-  validate-on-arrival checklist BEFORE trusting any planned pipeline;
-  record findings in its PROVEN LOG; respect the 150 GB cap + storage.md.
+    lib/            the typesetter (own writer on pikepdf) + page-JSON engine
+    bin/            validate_pdf.py  pagecmp.py  pdf_probe.py  scanctl.py
+                    imgctl.py  comfy_client.py  selftest.sh  setup_env.sh
+    docs/           playbook.md (phases+schema)  verification-protocol.md
+                    semantics-recipes.md  pitfalls.md  image-remediation.md
+                    comfyui-ops.md  CHANGELOG.md (history — not required reading)
+    books/          TEMPLATE/ (copy per job)  canary/ (synthetic fixture)
+    fonts/ images/  assets; vendor/checker-src/ = checker-source URLs only
 
-## Proven facts that must not drift (full list: docs/pitfalls.md)
+- `books/TEMPLATE` → copy per job; each book dir: book.json, pages/pNNN.json,
+  build.py, unversioned STYLE-GUIDE.md / REVIEW.md / ISSUES.md / IMAGES.md.
+- `bin/validate_pdf.py PDF --book DIR` — structure, role/association gates,
+  strict extraction roundtrip incl. spaces. `bin/pagecmp.py` — numeric
+  scan-vs-render layout parity per page (advisory: prioritizes review,
+  never replaces it). `bin/pdf_probe.py`, `bin/scanctl.py`, `bin/imgctl.py`
+  — decode/measure instruments. veraPDF + qpdf — external opinion.
+- `./bin/selftest.sh` — synthetic-fixture regression; ALL OK after any
+  lib/bin edit; goldens re-seized only after inspecting the diff, with a
+  stated reason. This protects the tools; it says nothing about a book.
 
-- Root `Document` element `/P` → StructTreeRoot; flat marked sequences
-  (greenfield loses content association on nesting); one sequence per line
-  per element by convention.
-- UA identity via `pdfuaid` (part 2 also needs `rev=2024` + `%PDF-2.0`);
-  `Em`/`Strong` are PDF 2.0 STRUCTURE ROLES and each element needs its own
-  `/NS` → shared indirect `<</NS (http://iso.org/pdf2/ssn)>>`.
-- `E`/`ActualText`/`Alt` are direct StructElem keys; soft EOL hyphens =
-  `/Span` + `ActualText U+00AD`; ToUnicode includes space.
-- UA-2 wants structure destinations for bookmarks; artifacts need
-  `/Type /Pagination /Subtype /PageHeader /BBox /Attached`.
-- Numbers in PDF objects are numbers (not strings); Image XObject names
-  normalized with `/` in Resources AND `Do`; subset fonts with
-  retain_gids + zeroed head timestamps.
+## Hard environment facts (verified; don't re-derive)
 
-## Session log (tooling only — append one line per meaningful change; NO
-## per-document content, findings or job details go here: those live in the
-## unversioned book directories)
+- No root/apt; no system Pango/Cairo → WeasyPrint/LaTeX/LibreOffice are
+  dead ends; engine = our own writer (lib/) on pikepdf.
+- venv: `./venv/bin/python` (pikepdf, pymupdf, fonttools, pyphen, pillow,
+  numpy). Fresh clone: `./bin/setup_env.sh` (venv + JRE + veraPDF; vera
+  installer URL is rolling — verify the jar name selftest expects).
+- Fonts: `fonts/Gelasio/` (OFL, 4 styles; body face per book chosen by
+  rendering comparison — pitfalls #22 method).
+- Repo scope: tooling only; every real book stays unversioned; committed
+  docs carry NO book-specific content (de-priming rule — audit found
+  regressions twice; sweep tracked files if you add examples).
+- PAC/GUI checkers unavailable; Acrobat findings arrive via operator —
+  per pitfall #48, encode the class into instrumentation and move on.
 
-- 2026-10-13: de-priming pass — committed docs scrubbed of every example
-  drawn from real books (recipes/playbook/template now use neutral
-  placeholders); playbook gained explicit per-page "source" provenance
-  field; AGENTS is generic by construction: it tells a session HOW to
-  start, never WHAT to expect.
-- 2026-10-12 engine extraction byte-verified vs prior build; canary
-  synthetic fixture + negative collision test anchor selftest.sh;
-  setup_env.sh reproduces the toolchain from this repo alone.
-- 2026-10-12 figure/wrap/hard-hyphen engine paths verified against veraPDF
-  ua2+ua1 on the fixture; rubrics for 7 image classes checked in; ComfyUI
-  ops plan committed as DESIGN (its HTTP paths and pipelines are explicitly
-  UNTESTED — validate on arrival).
+## Start of job
+
+1. `./bin/selftest.sh` ALL OK before trusting anything.
+2. Read the operator brief for scan location + wishes; form NO assumptions
+   about the document from this repo.
+3. `cp -r books/TEMPLATE books/<job-id>/`; record per-page provenance
+   (`"source"` scan + page_box).
+4. Run docs/playbook.md phases with the verification protocol loop
+   governing every claim, fix, and the ship decision.
+5. Ship-complete only when: instrument suite green + zero unresolved
+   ISSUES rows + FINAL SWARM consensus of "no remaining issues" per
+   protocol. One file ships: out/remediated.pdf (UA-2).

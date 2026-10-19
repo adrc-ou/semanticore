@@ -29,8 +29,8 @@ per-line fragments automatically (contiguity-safe); do not nest.
 
 ### Lists
 - Drawn bullet → `Lbl` owns glyph+space; `L /A << /O /List /ListNumbering
-  /Disc >>`; continuation indent from scan (this book: 2.6em wrap, 3.35em
-  bullet — typist-driven, keep per-book).
+  /Disc >>`; continuation indent from scan — MEASURE it per book (bullet_em,
+  tab_em, wrap_em); never inherit another book's numbers.
 - Numbered/roman lists: ListNumbering /Decimal /UpperRoman etc.
 
 ### Soft hyphens / dashes
@@ -45,7 +45,7 @@ per-line fragments automatically (contiguity-safe); do not nest.
 ## PROVEN in engine (books/canary regression)
 - Band figures, floating figures with wrap (`widths`/`indents`), decorative
   artifact figures, `/Figure` + `/Alt` `/Lang` `/Placement /Block` `/BBox`
-  direct keys — pass veraPDF ua2 AND ua1 + qpdf + own validator; overlap
+  direct keys — pass veraPDF ua2 (ua1 path via canary) + qpdf + validator; overlap
   guard verified by negative test. Long descriptions for data figures:
   place as ordinary `P` blocks after the figure in the SAME grid flow
   (tree order follows content order automatically).
@@ -66,23 +66,87 @@ Never ship a guessed treatment unverified.
    are legitimately flat.
 5. Typesetter currently hardwires run-ins to H1 → generalize
    `heading_level` on the block when this lands (engine change gated by
-   check_demo.sh + demo re-leveling expectation).
+   bin/selftest.sh canary goldens).
 
-### Footnotes / endnotes
-- Marker: superscript digits run → element role `Reference` (PDF 2.0)
-  (fallback UA-1: `Span`) with `/ActualText "endnote N"` / `"footnote N"`.
-  Superscript style: `Sup` role exists in 2.0 — prefer
-  Reference(+ActualText) over bare Sup (semantics > appearance).
-- Note text: end-of-chapter list → each note = `Endnote` element; page
-  footnotes = `FENote` elements in a page-bottom container; both live in
-  the tree AFTER the page body (document-order reading = conventional
-  and legal).
-- Pairing: (a) structure `/C` (associated elements) on marker ↔ note
-  elements, both directions; (b) invisible `/Link` annotation GoTo for
-  mouse/keyboard: dest = structure destination (UA-2) / page+coords (UA-1);
-  reverse link from note → marker. Verify greenfield accepts /C + annots;
-  if /C unmodeled, annotations alone suffice; record findings here.
+### Footnotes / endnotes (verified shipping pattern, UA-1 + UA-2)
+Best practice = notes are *navigable structures*, not just text: a
+screen-reader user hits the mark, hears what it is, jumps to the note,
+and jumps back. Ship all six layers (WTPDF-conformant; every element
+verified against veraPDF's UA-2 model internals):
+- Marker in body: role `Reference` (standard in both PDF 1.7 and 2.0 —
+  no ActualText needed) wrapping a child `Link` StructElem. The `Link`
+  element is REQUIRED: an untagged annotation fails UA 7.18.5.
+- Note block, UA-2: role `FENote` (PDF 2.0 type → `/NS` ssn; the raw
+  `Note` type is FORBIDDEN by WTPDF), children `Link` (marker, carries
+  the back-link) + `P` (text). NO `Lbl` wrapper — Acrobat restricts
+  Lbl/LBody to children of `LI` and flags Lbl-in-FENote even though
+  WTPDF permits it (we hold to Acrobat's stricter rule; validate_pdf
+  list-nesting gate enforces). NoteType rides the standard-attributes
+  mechanism: `/A << /O /FENote /NoteType /Endnote|/Footnote >>` (Name
+  values) — a direct /NoteType key is invisible to checkers (verified:
+  AttributeHelper reads it by owner from /A). UA-1 build: role `Annot`,
+  no wrapper P.
+- NEVER /Alt on a note container: Alt REPLACES the subtree for AT and
+  any ActualText/Alt trapped below it is Acrobat's "nested alternate
+  text" failure. Note identity = role + NoteType + Lbl + link
+  /Contents. Same rule generalizes: alt-bearing elements must have
+  alt-free descendants (validate_pdf gate).
+- Association: reciprocal `/Ref` arrays — `Reference./Ref [FENote]` and
+  `FENote./Ref [Reference,…]` (WTPDF 8.2.5.14; veraPDF computes
+  orphanRefs/ghostRefs from these). /Ref is a PDF 2.0 key → UA-1 build
+  omits it (links still carry the pairing).
+- Bidirectional link annotations: forward (mark → note) and backward
+  (note Lbl marker → mark), each GoTo, each with `/Contents`
+  ("Go to endnote 3" / "Return to text"). Missing pairs abort the
+  build (every reference needs a target and vice versa).
+- Destinations: UA-2 gets structure destinations via `/SD` named dest
+  (veraPDF clause 8.8 accepts ONLY /SD); also emit page/XYZ `/D` on the
+  same action because MuPDF and many viewers follow only /D. Both, always.
+- ParentTree: link StructElems get EXTRA number-tree entries under their
+  own mcid keys (keys allocated above the page range); pages stay 0-based
+  mcid — do not renumber pages for annotations.
 - Line numbers per page MUST accommodate note bands (measure; don't guess).
+Intentionally NOT used: `/C` associated-elements (superseded by /Ref),
+ActualText on markers (announced via role + Contents).
+
+### Cross-page pattern consistency (mechanism)
+Any construct that recurs — a numbered list continued across pages, the
+note blocks, captions, display quotations — is tagged with a
+`"pattern": "<id>"` on EVERY block that is an instance. The canonical
+parameter set (bullet_em/tab_em/wrap_em/item_style/size/pitch/align/
+role/note_kind/…) is recorded once in STYLE-GUIDE.md and MUST be byte-
+identical across instances; `validate_pdf --book` groups blocks by
+pattern id and ABORTS on drift (numbering_start excluded — it legitimately
+increments). The rule this enforces: a construct is styled ONCE from
+measurement, then applied everywhere; per-occurrence fiddling is the root
+of inconsistency. When P3 finds a recurring quirk, mint the pattern id and
+retrofit every earlier instance.
+
+### Undecorated lists (semantic lift)
+A vertical sequence of parallel items — author credits, editorial staff
+blocks, addresses — is `L`/`LI` + `LBody`, `ListNumbering None`, even
+when the source prints no bullets/numbers. AT then announces item counts
+and lets users navigate item-by-item; plain paragraphs read as one run-on
+sentence. Visual parity is mandatory (category 4): list blocks support
+`pitch` and fractional `row_gap` so lifted lists keep the measured grid.
+Decide from the document census, list every lift in the STYLE-GUIDE,
+never change text or add punctuation between items.
+
+### In-text cross-references ("See Figure X, p. N.")
+- The referenced label renders as a NON-superscript `Reference` (inline
+  size) wrapping a `Link`, with a FORWARD-only GoTo annotation onto the
+  target block (`xref_anchor` on the Table/Figure block; missing
+  target or unused anchor aborts the build). `/Ref` pairs
+  Reference↔target in the UA-2 tree. /Contents: "Go to Figure 1".
+- No back-link: a table can be referenced from many places and has no
+  single point of departure; AT "previous location"/reading-order nav
+  returns the user (note markers are the one case that gets explicit
+  return links).
+- Tables/figures stay inline at their source position in the structure
+  tree — reading order = physical order. Whether the AT announces
+  "table, 4 rows…" or lets linear reading skip it is the AT's decision,
+  enabled by correct Table/Caption/TH tagging; never reorder content to
+  guess at it.
 
 ### Tables
 - Re-typeset real text (never an image of a table).

@@ -36,9 +36,9 @@ else:
 PY
 ./venv/bin/python bin/validate_pdf.py $K/out/canary.pdf --profile 2 --book $K \
     --expect Em=4 --expect Strong=2 --expect H1=1 --expect Figure=2 \
-    --expect-soft-hyphens 3 | tail -1
+    --expect FENote=2 --expect Table=1 --expect-soft-hyphens 3 | tail -1
 ./venv/bin/python bin/validate_pdf.py $K/out/canary-ua1.pdf --profile 1 --book $K \
-    --expect Em=0 --expect Strong=0 --expect Figure=2 \
+    --expect Em=0 --expect Strong=0 --expect Figure=2 --expect Table=1 \
     --expect-soft-hyphens 3 | tail -1
 # collision guard negative test
 cp $K/pages/p002.json /tmp/p002.harness.json

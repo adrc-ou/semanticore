@@ -60,6 +60,25 @@
 20. Identity XMP: `pdfuaid` = `http://www.aiim.org/pdfua/ns/id/` with
     `part` (+`rev=2024` iff part 2). `pdfaid` is the PDF/A schema — UA-1
     5.1 fails if you use it for UA.
+44. Spaces must be SHOWN, not positioned: a gap that exists only as a
+    Tm/x jump extracts as nothing in strict consumers ("TITLEWORDS…").
+    MuPDF get_text() infers spaces from gaps and HIDES the defect —
+    extraction QA must use validate_pdf --book (STRICT ToUnicode decode,
+    ActualText substitution, spaces compared). Proven 2026-10-14 after a
+    shipped book pasted as run-together words: every render path now
+    emits real U+0020 at every join, and ActualText rides the BDC
+    property list (extraction) as well as the StructElem (tree).
+45. NEVER /Alt on an element that has readable descendants: Alt REPLACES
+    the subtree for AT, and nested Alt/ActualText under it is Acrobat's
+    "nested alternate text" failure (the endnote Alt trapped 11 soft-
+    hyphen ActualText spans this way). Note identity = FENote role +
+    NoteType + Link marker + link /Contents (NO Lbl — see #48).
+    validate_pdf walks the tree for it.
+46. Standard structure attributes (NoteType, ListNumbering, Scope…) are
+    read from `/A` attribute objects matched by `/O` owner — a direct
+    key of the same name is invisible to checkers (verified against
+    veraPDF AttributeHelper). /Ref targets must be the same indirect
+    objects both ways (orphan/ghost pairing check).
 
 ## C. Scans / transcription
 21. Confirm scan dpi by aspect: 1650×2550 halves = 5.5×8.5" @300dpi.
@@ -83,6 +102,38 @@
 26. Keep exact original line breaks per block (`lines` table). Typesetter
     asserts joined logical text == text; justification distributes residual
     width into word gaps only.
+39. Transcribe by PAGE BANDS (2–4 native-res reads/page), never line-strip
+    loops. Per-line image grinding guarantees mid-task compaction; compacted
+    agents then either re-transcribe from notes (#25) or livelock
+    re-checking scratch state (/tmp ledgers). An N-agent strip-swarm is an
+    N-fold context-loss multiplier, not a speedup. ZERO images in any
+    subagent context, crops included (#57); vision is main-agent work
+    (operator rules 2026-10-13/16).
+40. Verification is a machine gate (the Block assert, build gates), not an
+    agent ritual. A brief heavy with "verify/sanity-check" produces agents
+    that verify forever and transcribe nothing; say "assert once after the
+    write" instead.
+41. Roundtrip asserts check JSON-vs-JSON, never JSON-vs-scan. Transcription
+    drift (silently "smoothed" words, reassembled line order, modernized
+    spelling) is only caught by the P6.5 V-pass: a fresh source re-read,
+    word by word, per page, before ship. Band-reassembly from memory after
+    image trimming is a known drift vector — re-read pixels, not notes.
+47. `"source"."page_box"` provenance is `[x, y, W, H]`, NOT a corner pair:
+    composites/crops must compute crop=(x, y, x+W, y+H). Read as corners it
+    silently yields sliver strips (recto boxes end at x0+W = image width);
+    a "cropped" composite is a script bug to verify before suspecting the
+    data (the engine never reads page_box — PDF layout is unaffected).
+42. Collision guards must register EVERY drawn rect (text lines, headings,
+    tables, figures), not just floating figures — text-over-table and
+    text-over-text overlaps are invisible to float-only checks and to
+    every structure validator; occluded text is also a WCAG 1.4.3 contrast
+    failure. Guard aborts: fix block gaps/rows in the model.
+43. Vertical fidelity = the blank-row budget. Source pages interleave
+    empty grid rows between display elements (titles, subheads, lists,
+    note zones); transcribing only inked lines silently collapses the
+    rhythm. Extract the source line grid (ink-band profile) per page and
+    model inter-block gaps explicitly; measure deltas against the render,
+    don't eyeball montages.
 
 ## D. Validators / external sources
 27. pdfa.org wp-content PDFs: Cloudflare 403. The same content: GitHub
@@ -96,7 +147,7 @@
     UA-2 profile ≈ 1728 rules; UA-1 ≈ 106. `--format xml` + parsing
     `<rule status="failed">` is how you read exact predicates.
 29. When a validator's message is cryptic, fetch the checker's Java/C
-    source (kept in `vendor/checker-src/`): `TaggedPDFConstants.java` /
+    source (URLs listed in `vendor/checker-src/README.md`, not vendored): `TaggedPDFConstants.java` /
     `TaggedPDFHelper.java` / `PDDestination.java` / MuPDF `name-table.h`
     settled namespace URIs, struct-dest rules, and PDF-2.0 name existence.
 30. Regression lock: content-stream sha256 goldens (`bin/selftest.sh`) on
@@ -115,25 +166,51 @@
     hashes of the shipped artifact existed.
 
 ## E. Images / figures (engine-proven 2026-10-12; ComfyUI items marked *)
-32. /Figure element: direct StructElem keys /Alt /Lang /Placement /BBox
+50. /Figure element: direct StructElem keys /Alt /Lang /Placement /BBox
     pass veraPDF ua1+ua2; BBox in PDF points, page space, y-up.
-33. Image XObject: raw RGB + FlateDecode + DeviceRGB + BitsPerComponent 8;
+51. Image XObject: raw RGB + FlateDecode + DeviceRGB + BitsPerComponent 8;
     resource keys need the leading slash normalized in BOTH places
     (Resources dict AND `Do` operand) — mismatch = invisible image, valid file.
-34. Layout collisions are MODEL bugs: the engine guard aborts the build on
+52. Layout collisions are MODEL bugs: the engine guard aborts the build on
     any text×float or float×float overlap; fix widths/indents/band/order.
     Transcription line tables must clear figure x-spans for every row the
     figure touches (band figure: rows consumed; float: rows = ceil(h/pitch)).
     A line whose '-' is a REAL hyphen (compound broken at the hyphen) needs
     `hard_hyphen_lines:[idx]` or the engine treats it as synthetic.
-35. Alts are structure metadata, NOT drawn glyphs — exclude figure/block alts
+53. Alts are structure metadata, NOT drawn glyphs — exclude figure/block alts
     from the font subset census (subset blew up when they were included).
-36. Contrast tool samples region luma percentiles; a "fail" over dark art
+54. Contrast tool samples region luma percentiles; a "fail" over dark art
     under dark text is CORRECT behavior — remediate per ladder (lighten
     art zone / artifact backing), don't tune the sampler to pass.
-37. * Diffusion outputs are guilty until seen: every candidate gets personal
+55. * Diffusion outputs are guilty until seen: every candidate gets personal
     native-res review + contact sheet + objective pre-score before rubric
     verdict; the tools (imgctl) are evidence, never the acceptance.
-38. * Comfy workflow reproducibility = (API-format workflow JSON, seed,
+56. * Comfy workflow reproducibility = (API-format workflow JSON, seed,
     inputs) triple; keep workflow files in images/workflows/, record the
     triple in the book IMAGES.md row every accept.
+48. Checkers DIVERGE: Acrobat enforces rules WTPDF/veraPDF permit (it
+    restricts Lbl/LBody to LI children — an Lbl-in-FENote passed veraPDF
+    and failed Acrobat; its nested-alternate-text check is broader than
+    any vera clause). Ship standard = Acrobat-clean too. Standing
+    promotion rule: whenever an external checker (Acrobat/PAC/other)
+    reports a finding our gauntlet missed, encode that check as a
+    validate_pdf gate the same session and negative-test it by planting
+    the defect in a copy. Proprietary checkers cannot run headless here
+    — our gates ARE the approximation; they only improve when a finding
+    is fed back.
+49. Recurring constructs drift when styled per-occurrence (a list spanning
+    a page break had its first item outdented while continuations were not;
+    note blocks on successive pages carried different line pitch). Mechanism:
+    "pattern":"<id>" on every instance block + canonical parameter set in
+    STYLE-GUIDE + validate_pdf --book groups by pattern and ABORTS on any
+    styling-key difference (numbering_start exempt). Mint the id during
+    the P3 census, retrofit earlier instances, measure once.
+57. Trust moves to RE-RUNNABLE TEXT, never to pixels in someone else's
+    window. Swarm verifiers get file paths + claim text and independently
+    re-run the instruments (pagecmp, validate_pdf, probes); a claim with no
+    re-runnable evidence pointer is a hunch (log it, don't fix on it).
+    Subagent image load — even one small crop — re-enables the fold→
+    distrust-state→re-verify→livelock cycle that ate hours in the pilot,
+    and crops inherit the primary's framing bias. Verification fan-out is
+    safe BECAUSE verifiers are text-only, stateless, one-shot, and capped
+    (docs/verification-protocol.md).

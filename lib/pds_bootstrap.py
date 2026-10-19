@@ -1,7 +1,8 @@
 """Locate the pds workshop lib from anywhere.
 
-Books' build.py:  import pds_bootstrap; ROOT = pds_bootstrap.init()
-Search order: $PDS_HOME, then upward from this file for a dir containing
+typeset.py calls find_root() (lib is already on sys.path from the build
+script). init() is a convenience for callers that have bootstrapped lib
+onto sys.path; it is NOT importable before that. Search order: $PDS_HOME, then upward from this file for a dir containing
 lib/typeset.py + AGENTS.md. Returns the workshop root path.
 """
 import os

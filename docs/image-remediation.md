@@ -96,7 +96,7 @@ already records each line's true visual extent. Engine contract:
    scoring + open ISSUES.md row with contact sheet path + question
    (e.g., "is the faint third signature authentic content?"). Escalate to
    user, don't grind past the cap.
-6. Ledger EVERY figure: images/ledger → per book `IMAGES.md` (imgctl
+6. Ledger EVERY figure: per-book `IMAGES.md` (imgctl
    ledger appends): id, class, source, rounds, per-candidate scores,
    chosen, notes, storage bytes.
 

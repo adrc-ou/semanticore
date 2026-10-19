@@ -4,7 +4,7 @@
   "lang": "en-US",
   "producer": "pds tagged-pdf engine",
   "creator": "Remediation typesetter",
-  "output": {"2": "out/remediated.pdf", "1": "out/remediated-ua1.pdf"},
+  "output": "out/remediated.pdf",
   "fonts": {
     "r":  "../../fonts/Gelasio/Gelasio-Medium.ttf",
     "b":  "../../fonts/Gelasio/Gelasio-Bold.ttf",
