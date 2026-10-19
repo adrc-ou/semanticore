@@ -93,7 +93,7 @@ def main():
     ap.add_argument("--no-x", action="store_true", help="skip margin fit")
     a = ap.parse_args()
 
-    root = pathlib.Path(os.environ.get("PDS_HOME", "") or ".").resolve()
+    root = pathlib.Path(os.environ.get("SEMANTICORE_HOME", "") or ".").resolve()
     sys.path.insert(0, str(root / "lib"))
     import pymupdf
 

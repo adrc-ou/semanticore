@@ -5,7 +5,7 @@ profile — the engine retains a UA-1 path for the canary fixture alone),
 faithful visual recreation, no artifacts of scanning. Scales from one
 spread to full textbooks; the process and gates are identical. WHEN output is
 trusted is governed by docs/verification-protocol.md (claims, swarm
-consensus, final sweep) — phases below describe the work, not the
+consensus, checklist) — phases below describe the work, not the
 authority. Commands assume cwd = the repo root. This repo contains NO information about any particular
 document; every structural decision is made from ITS scans during P2/P3.
 
@@ -41,7 +41,7 @@ via `"xref_phrase"`). Line ending `-` = synthetic soft hyphen (typesetter
 asserts consistency; never guess — see P2).
 Figure block (IMPLEMENTED + regression-tested via books/canary):
     { "id":"fig-7a", "kind":"figure",
-      "src":"assets/fig-7a.png",           // book-dir or PDS-root relative
+      "src":"assets/fig-7a.png",           // book-dir or Semanticore-root relative
       "bbox":[x, top, w, h],               // pt; x/top relative to current grid row
       "alt":"…", "lang":"en-US",           // required unless artifact:true
       "band":true,                          // true: consumes ceil(h/pitch) rows;
@@ -95,6 +95,10 @@ P0 Intake (once/book)
     PLACEHOLDERS — re-measure, never inherit); record in
     books/<id>/STYLE-GUIDE.md §Geometry.
     Gate: render one page later at 300dpi → column edges within ~5% of scan.
+    Also: draft books/<id>/CHECKLIST.md — every applicable defect category,
+    every gate below, and every operator request, as one falsifiable item each
+    with its deciding evidence (verification-protocol §6). P0 ends only when a
+    consensus coverage audit adopts the list; from then on it is append-only.
 
 P1 Crop (per spread)
     bin/scanctl.py strips SCAN --page N --rows <expected lines> --out work/...
@@ -119,7 +123,7 @@ P2 Transcribe (per page; main lane; one pass per page)
     Gate: page with open ISSUES rows cannot enter P5.
     Confidence rule: anything below high confidence after a native-res
     second look → question, never a guess.
-    Delegation: vision work is NEVER delegated (operator rule 2026-10-13)
+    Delegation: vision work is NEVER delegated
     — subagent windows cannot hold page images (pitfall #39). P2 runs in
     the main agent, one page per pass. Swarms only for image-free work
     (code, validation, prose passes over existing text).
@@ -238,8 +242,7 @@ P6.5 V-pass — verbatim verification (per book; SHIPS ONLY IF COMPLETE)
 - Recovery: lost model vs existing PDF → bin/pdf_probe.py decodes tree +
   text per page (rebuild JSON skeleton, then re-verify against scans).
 
-## Tooling notes log (this file documents PROCESS; keep it document-agnostic —
-book findings belong in the book's unversioned STYLE-GUIDE.md/ISSUES.md)
+<!-- This file documents PROCESS and stays document-agnostic: book findings
+belong in the book's unversioned STYLE-GUIDE.md/ISSUES.md. Change history is
+git's job — keep none of it in the docs. -->
 
-- 2026-10-12: process forged end-to-end on a real 2-page sample (result:
-  full gates work; goldens + canary now anchor the tools instead).

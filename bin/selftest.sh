@@ -11,8 +11,8 @@
 set -e; cd "$(dirname "$0")/.."
 K=books/canary
 [ -x venv/bin/python ] || { echo "missing venv: run bin/setup_env.sh"; exit 1; }
-PDS_HOME=$PWD ./venv/bin/python $K/build.py >/dev/null
-PDS_HOME=$PWD UA_PART=1 ./venv/bin/python $K/build.py >/dev/null
+SEMANTICORE_HOME=$PWD ./venv/bin/python $K/build.py >/dev/null
+SEMANTICORE_HOME=$PWD UA_PART=1 ./venv/bin/python $K/build.py >/dev/null
 export UPDATE="${1:-}"
 ./venv/bin/python - <<'PY'
 import pikepdf, hashlib, json, os
@@ -49,10 +49,10 @@ for x in pg["blocks"]:
     if x["id"] == "k-wrap": x["widths"] = [None]*10
 p.write_text(json.dumps(pg))
 PY
-if PDS_HOME=$PWD ./venv/bin/python $K/build.py 2>&1 | grep -q "LAYOUT COLLISION"; then
+if SEMANTICORE_HOME=$PWD ./venv/bin/python $K/build.py 2>&1 | grep -q "LAYOUT COLLISION"; then
     echo "collision guard: OK"; else echo "collision guard: BROKEN"; cp /tmp/p002.harness.json $K/pages/p002.json; exit 1; fi
 cp /tmp/p002.harness.json $K/pages/p002.json
-PDS_HOME=$PWD ./venv/bin/python $K/build.py >/dev/null
+SEMANTICORE_HOME=$PWD ./venv/bin/python $K/build.py >/dev/null
 ./venv/bin/python -c "import pikepdf; assert pikepdf.Job(['qpdf','--check','books/canary/out/canary.pdf']).run() in (None,0)"
 echo "qpdf: OK"
 if [ -f tools/vp/bin/cli-1.30.3.jar ]; then
@@ -63,12 +63,12 @@ else
     echo "veraPDF SKIP (run bin/setup_env.sh) — REQUIRED before shipping any book"
 fi
 # template out-of-tree smoke
-rm -rf /tmp/pds_smokebook && cp -r books/TEMPLATE /tmp/pds_smokebook
-cp $K/pages/*.json /tmp/pds_smokebook/pages/
-cp -r $K/assets /tmp/pds_smokebook/assets
-rm -rf /tmp/pds_smokebook/__pycache__
-PDS_HOME=$PWD ./venv/bin/python /tmp/pds_smokebook/build.py >/dev/null
-./venv/bin/python bin/validate_pdf.py /tmp/pds_smokebook/out/remediated.pdf --profile 2 \
-    --book /tmp/pds_smokebook | tail -1
-rm -rf /tmp/pds_smokebook /tmp/p002.harness.json
+rm -rf /tmp/semanticore_smokebook && cp -r books/TEMPLATE /tmp/semanticore_smokebook
+cp $K/pages/*.json /tmp/semanticore_smokebook/pages/
+cp -r $K/assets /tmp/semanticore_smokebook/assets
+rm -rf /tmp/semanticore_smokebook/__pycache__
+SEMANTICORE_HOME=$PWD ./venv/bin/python /tmp/semanticore_smokebook/build.py >/dev/null
+./venv/bin/python bin/validate_pdf.py /tmp/semanticore_smokebook/out/remediated.pdf --profile 2 \
+    --book /tmp/semanticore_smokebook | tail -1
+rm -rf /tmp/semanticore_smokebook /tmp/p002.harness.json
 echo "selftest: ALL OK"

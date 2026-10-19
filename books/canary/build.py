@@ -3,7 +3,7 @@ UA_PART=1 env builds the PDF/UA-1 variant instead of the UA-2 default."""
 import os, pathlib, sys
 
 _here = pathlib.Path(__file__).resolve()
-root = pathlib.Path(os.environ.get("PDS_HOME", "") or "/nonexistent")
+root = pathlib.Path(os.environ.get("SEMANTICORE_HOME", "") or "/nonexistent")
 if not (root / "lib" / "typeset.py").exists():
     for cand in list(_here.parents):
         if (cand / "lib" / "typeset.py").exists():

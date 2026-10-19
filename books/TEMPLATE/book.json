@@ -2,7 +2,7 @@
   "title": "SET ME — descriptive document title (becomes /Info + XMP dc:title)",
   "profile": 2,
   "lang": "en-US",
-  "producer": "pds tagged-pdf engine",
+  "producer": "Semanticore tagged-pdf engine",
   "creator": "Remediation typesetter",
   "output": "out/remediated.pdf",
   "fonts": {

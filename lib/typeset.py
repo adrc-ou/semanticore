@@ -27,7 +27,7 @@ import pathlib
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from pdfwriter import Writer, EmbedFont, Elem  # noqa: E402
-import pds_bootstrap  # noqa: E402
+import semanticore_bootstrap  # noqa: E402
 
 MARK = re.compile(r"\{(B|I|BI|EM|STR|REF)\|([^{}]*)\}"
                   r"|\{XREF\|([^{}|]*)\|([^{}]*)\}"
@@ -293,7 +293,7 @@ class Typesetter:
             BULLET_TIGHT=float(g.get("bullet_tight", 0.12)),
             hscale_min=float(g.get("hscale_min", 0.88)))  # legacy key: ignored, Tz forbidden
         try:
-            self.root = pds_bootstrap.find_root()
+            self.root = semanticore_bootstrap.find_root()
         except SystemExit:
             self.root = None
         self.pages = load_pages(self.dir)
@@ -351,7 +351,7 @@ class Typesetter:
         RES = {"r": "/F1", "b": "/F2", "i": "/F3", "bi": "/F4"}
         self.RES = RES
         try:
-            wr = pds_bootstrap.find_root()
+            wr = semanticore_bootstrap.find_root()
         except SystemExit:
             wr = None
         for st_key, rel in self.book["fonts"].items():
@@ -1340,7 +1340,7 @@ class Typesetter:
         if runs:
             labels = runs
         self.w.finalize(str(out), self.doc, b["title"], lang=b.get("lang", "en-US"),
-                        producer=b.get("producer", "pds tagged-pdf engine"),
+                        producer=b.get("producer", "Semanticore tagged-pdf engine"),
                         creator=b.get("creator", ""),
                         page_labels=labels,
                         outlines=self.outline_items, ua_part=self.ua_part)

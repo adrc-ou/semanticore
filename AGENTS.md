@@ -1,12 +1,11 @@
-# pds — accessible-PDF remediation workshop
+# Semanticore — accessible-PDF remediation workshop
 
 Mission: scanned book pages → tagged, validated accessible PDFs (PDF/UA-2
 — the only shipped profile; WCAG 2.2 AA via UA-2 + per-SC report).
 Images: preserve-first, diffusion restoration authorized for degraded
 scans, accessibility beats fidelity on ties.
 This file is the whole preamble a session should need; depth is in `docs/`
-(read on demand). History is in docs/CHANGELOG.md (do not re-read per
-task).
+(read on demand).
 
 ## Operating model — the agent is the engine
 
@@ -24,11 +23,13 @@ falsifiable claims backed by re-runnable instrument evidence;
 text-only verifiers independently RE-DERIVE each claim (re-running the
 tools themselves) until consensus; you implement fixes (single writer);
 a swarm validates each fix against before/after evidence, reversing
-consensus-failed fixes; the whole cycle repeats until a full sweep finds
-nothing new; a FINAL SWARM of independent finders — re-deriving, not
-rubber-stamping — must consent that the book is issue-free before you
-call it done. Verifiers never see images; you are the eyes, the
-instruments are the ruler everyone can re-read.
+consensus-failed fixes. Completion is a bounded artifact, never a feeling:
+the book's `CHECKLIST.md` is drafted at P0, adopted only after a swarm
+audits its *coverage*, then grows append-only; every item closes through its
+own consensus loop, and once all items are closed the whole list is
+re-validated — you plus a swarm per item — before anything is called DONE.
+Verifiers never see images; you are the eyes, the instruments are the ruler
+everyone can re-read.
 
 Work from that model:
 - **Trust your perception.** Read whole pages at native resolution in
@@ -61,6 +62,10 @@ Work from that model:
 - **Perfectionism is the contract.** World-class e-text, pixel-level
   obsession, verify against disk and render rather than notes, re-read
   anything you have not personally seen at required resolution.
+- **History lives in git, not in files.** No changelogs, no dated provenance
+  notes, no attribution of who decided what, no "previously/now" narration in
+  docs, code comments, or ledgers. Write only what is true now; git log answers
+  how we got here.
 - **No images in subagent contexts. Ever — not even small crops.**
   Image load folds subagent windows; folded agents re-verify scratch
   state and livelock (observed: hours burned on it), and crops add
@@ -102,10 +107,13 @@ Work from that model:
    docs/semantics-recipes.md; reproduce them, don't re-derive, and never
    hide note text behind replacement alt text.
 7. **Blank pages** — trim edges, preserve interior blanks.
-8. **Images** — ladder (live text > vector > restoration > crop);
+8. **Images** — ladder (live text > vector > restoration > crop); the
+   restoration rung is an *environment* capability — run the capability gate
+   (`bin/comfy_probe.py`, docs/comfyui-ops.md §1) every session and fall back
+   per §6 when ComfyUI is absent, which is a supported configuration;
    bounded attempts (≤4 seeds × ≤3 rounds, escalate technique); every
    candidate viewed at native res against the class rubric; text-over-art
-   contrast ≥4.5:1; handwriting/stickers excluded by operator ruling,
+   contrast ≥4.5:1; handwriting/stickers excluded,
    ledgers in IMAGES.md.
 9. **Verbatim, navigable, faithful, structured, measured** — when triaging
    a new book, hunt each category explicitly on every page; a category
@@ -115,15 +123,16 @@ Work from that model:
 
     lib/            the typesetter (own writer on pikepdf) + page-JSON engine
     bin/            validate_pdf.py  pagecmp.py  pdf_probe.py  scanctl.py
-                    imgctl.py  comfy_client.py  selftest.sh  setup_env.sh
+                    imgctl.py  comfy_probe.py  selftest.sh  setup_env.sh
     docs/           playbook.md (phases+schema)  verification-protocol.md
                     semantics-recipes.md  pitfalls.md  image-remediation.md
-                    comfyui-ops.md  CHANGELOG.md (history — not required reading)
+                    comfyui-ops.md  image-remediation.md (see list below)
     books/          TEMPLATE/ (copy per job)  canary/ (synthetic fixture)
     fonts/ images/  assets; vendor/checker-src/ = checker-source URLs only
 
 - `books/TEMPLATE` → copy per job; each book dir: book.json, pages/pNNN.json,
-  build.py, unversioned STYLE-GUIDE.md / REVIEW.md / ISSUES.md / IMAGES.md.
+  build.py, unversioned STYLE-GUIDE.md / CHECKLIST.md / REVIEW.md / ISSUES.md /
+  IMAGES.md.
 - `bin/validate_pdf.py PDF --book DIR` — structure, role/association gates,
   strict extraction roundtrip incl. spaces. `bin/pagecmp.py` — numeric
   scan-vs-render layout parity per page (advisory: prioritizes review,
@@ -145,6 +154,22 @@ Work from that model:
 - Repo scope: tooling only; every real book stays unversioned; committed
   docs carry NO book-specific content (de-priming rule — audit found
   regressions twice; sweep tracked files if you add examples).
+- ComfyUI is an environment capability, never a repo fact: the harness declares
+  whether it exists and how to reach it, and maps a `comfyui/` workspace
+  directory (custom_nodes / models / input / output / temp / user) when it does;
+  no endpoint, token, tool path, host or machine spec lives in this repo
+  (pitfalls #58). `./bin/comfy_probe.py` re-derives the answer per session —
+  ABSENT is supported, the ladder just stops before restoration (comfyui-ops §1,
+  §2.1, §6). Autonomy is broad: agents fetch weights (free terms only — never
+  anything requiring payment), install and author nodes, workflows and
+  non-generative pipelines, and police the 150 GB storage ceiling themselves
+  (§4, §4.1, §7, §10). The operator's job is the *first* node-pack load in an
+  environment (one restart); every later restart is agent-driven (§13), as is
+  provisioning. Also operator-side: packages for the server's own interpreter
+  (§2.2). Every engine output gets a
+  multimodal look before acceptance and enters the consensus loop like any other
+  work — exploratory is not exempt (§11); stated budgets and clean pivots keep a
+  stalled experiment from eating the book (§12).
 - PAC/GUI checkers unavailable; Acrobat findings arrive via operator —
   per pitfall #48, encode the class into instrumentation and move on.
 
@@ -156,7 +181,9 @@ Work from that model:
 3. `cp -r books/TEMPLATE books/<job-id>/`; record per-page provenance
    (`"source"` scan + page_box).
 4. Run docs/playbook.md phases with the verification protocol loop
-   governing every claim, fix, and the ship decision.
-5. Ship-complete only when: instrument suite green + zero unresolved
-   ISSUES rows + FINAL SWARM consensus of "no remaining issues" per
-   protocol. One file ships: out/remediated.pdf (UA-2).
+   governing every claim, fix, and the ship decision. P0 also drafts
+   `books/<id>/CHECKLIST.md`; P0 is not over until a swarm adopts it.
+5. Ship-complete only when: instrument suite green + every CHECKLIST item
+   closed by consensus (ISSUES rows resolved or operator-waived) + the
+   full-list re-validation wave passes. One file ships: out/remediated.pdf
+   (UA-2).

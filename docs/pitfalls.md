@@ -64,9 +64,9 @@
     Tm/x jump extracts as nothing in strict consumers ("TITLEWORDS…").
     MuPDF get_text() infers spaces from gaps and HIDES the defect —
     extraction QA must use validate_pdf --book (STRICT ToUnicode decode,
-    ActualText substitution, spaces compared). Proven 2026-10-14 after a
-    shipped book pasted as run-together words: every render path now
-    emits real U+0020 at every join, and ActualText rides the BDC
+    ActualText substitution, spaces compared). A shipped book once pasted as
+    run-together words: every render path now emits real U+0020 at every join,
+    and ActualText rides the BDC
     property list (extraction) as well as the StructElem (tree).
 45. NEVER /Alt on an element that has readable descendants: Alt REPLACES
     the subtree for AT, and nested Alt/ActualText under it is Acrobat's
@@ -107,8 +107,7 @@
     agents then either re-transcribe from notes (#25) or livelock
     re-checking scratch state (/tmp ledgers). An N-agent strip-swarm is an
     N-fold context-loss multiplier, not a speedup. ZERO images in any
-    subagent context, crops included (#57); vision is main-agent work
-    (operator rules 2026-10-13/16).
+    subagent context, crops included (#57); vision is main-agent work.
 40. Verification is a machine gate (the Block assert, build gates), not an
     agent ritual. A brief heavy with "verify/sanity-check" produces agents
     that verify forever and transcribe nothing; say "assert once after the
@@ -165,7 +164,7 @@
     source file mid-cleanup; recovery was verifiable only because golden
     hashes of the shipped artifact existed.
 
-## E. Images / figures (engine-proven 2026-10-12; ComfyUI items marked *)
+## E. Images / figures (ComfyUI items marked *)
 50. /Figure element: direct StructElem keys /Alt /Lang /Placement /BBox
     pass veraPDF ua1+ua2; BBox in PDF points, page space, y-up.
 51. Image XObject: raw RGB + FlateDecode + DeviceRGB + BitsPerComponent 8;
@@ -214,3 +213,38 @@
     and crops inherit the primary's framing bias. Verification fan-out is
     safe BECAUSE verifiers are text-only, stateless, one-shot, and capped
     (docs/verification-protocol.md).
+58. * Environment facts are harness-owned, repo-hostile. A hand-written
+    ComfyUI client that baked in a host, a port and a scheme went stale the
+    moment the integration moved behind a declared endpoint with bearer
+    auth, and the repo then actively misinformed the next session (it also
+    asserted a machine spec nobody had). Rule: never commit an endpoint,
+    token, helper-tool path, host name, or capacity number — read them from
+    the harness at run time and record only the *verdict* of
+    `bin/comfy_probe.py`. Docs that restate an integration become a second
+    source of truth, and the second source is always the stale one.
+59. * "ComfyUI is not available here" is a supported configuration, not an
+    error to route around. The gate answers ABSENT → the ladder stops at the
+    non-diffusion rungs, the verdict goes in IMAGES.md, and any figure that
+    genuinely needed restoration gets an ISSUES.md row. Never guess a
+    localhost port, install a server, or start a second stack to make the
+    rung exist (same trap as #58 in the other direction).
+60. * `PARTIAL: no models installed` is the agent's own to-do, not a blocker.
+    ComfyUI rescans weight folders when a loader is queried, so a file placed
+    in the right class subfolder is selectable within seconds with no restart
+    — while custom-node CODE loads only at startup, and packages for the
+    server's own Python environment are usually outside an agent's reach
+    entirely. Classify every gap as self-fixable (§4.1), request-once (§0), or
+    route-around (§6) instead of reporting it and stopping.
+61. * Do not assume a mapped directory in the workspace belongs to the running
+    deployment — prove it by writing and observing from the server's side
+    (upload via API → look; drop a file → query a loader). A mount that maps
+    input/output but not models, or a deployment whose folders live elsewhere,
+    changes the plan and must be re-proven per environment
+    (docs/comfyui-ops.md §4.1).
+62. * A pack whose files are on disk is not a pack that loaded. Node code that
+    raises on import is swallowed into a startup log line, and a shim that
+    catches its own missing module quietly is worse. Prove loading from the
+    server's side — marker node present in `GET /object_info/<Class>`, control
+    route answering, startup log clean — and confirm which directory the server
+    actually imports from, because a mapped `custom_nodes/` in the workspace is
+    not evidence it is on that path (docs/comfyui-ops.md §13).

@@ -20,19 +20,22 @@ Practical rule: a verifier prompt contains file PATHS and CLAIM TEXT,
 never image bytes, never the primary's scratch state, never a summary
 of prior rounds. Fresh context or nothing.
 
-## The loop (triage → fix → converge → final sweep)
+## The loop (triage → fix → converge → checklist)
 
     triage ──► verify-claims ──► fix ──► verify-fixes
        ▲                                   │
        └────────── (next round) ◄──────────┘
                         │ round yields no new claims
                         ▼
-                  final-sweep swarm ──► consensus clean ──► DONE
-                        │ any new finding
-                        └──► back to triage
+          every CHECKLIST item closed ──► full re-validation of the list
+                        │ an item fails, or a new gap appears
+                        └──► back to triage (the gap becomes an item)
+                        ▼
+                       DONE  (§6)
 
-**Done is not a feeling.** The primary may not declare completion; only
-final-sweep consensus says so.
+**Done is not a feeling.** The primary may not declare completion; only the
+book's checklist — adopted by consensus, closed item by item, then re-validated
+in full — says so.
 
 ### 1. Triage (main agent)
 Sweep the book against the defect categories (AGENTS.md). Record each
@@ -91,27 +94,50 @@ refutation), not in effort. Cap hit → escalate.
 
 ### 5. Convergence
 Loop 1–4 until a complete triage sweep (fresh eyes, whole book, all
-categories) yields ZERO new confirmed claims AND no pending fixes. A
+categories) yields ZERO new confirmed claims AND no pending fixes; every new
+confirmed claim is appended to the checklist as it lands. A
 round that only produces refuted hunches still counts as progress —
 log it.
 
-### 6. Final-sweep swarm — the ONLY thing that grants DONE
-≥3 independent finders, each with a distinct charter (structural
-correctness / visual parity via pagecmp+record audit / content
-verbatim via strict extraction + record audit / notes-navigation &
-links), each starting from the shipped PDF + scan provenance records,
-NONE told what previous rounds fixed (no anchoring). A finder that
-reports no findings must list what it re-derived (commands run) — an
-empty verdict without receipts is VOID, re-spawn.
-Any NEW confirmed claim → back to step 1, the sweep restarts.
-DONE = all finders verdict-clean WITH receipts + zero ISSUES rows
-open + operator gets a plain-English report (AGENTS ground rules).
-Honest residue: perception has one channel by design — a claim
-category with NO text proxy (the feel of an emphasis system, an
-unusual artifact) is verified only as far as the primary's recorded
-observations cohere and the operator's spot-checks reach. The protocol
-removes hiding places for errors; it does not claim to remove the
-primary's eyes from the critical path.
+### 6. DONE — the completion checklist, not a whole-book re-read
+
+No verifier can judge "the whole book": a textbook is hundreds of pages, which
+exceeds any subagent window, and an open-ended "is this done?" prompt earns an
+agreeable answer. DONE is therefore granted by a bounded artifact on disk — the
+book's `CHECKLIST.md` (shape in `books/TEMPLATE/CHECKLIST.md`) — and every
+judgment stays small enough to re-derive.
+
+1. **Draft (P0).** The primary writes the list from the operator brief, the
+   defect categories, the phase gates, and its own first read of the book. One
+   item = one falsifiable claim + its deciding evidence (a command and expected
+   result, a stated page range for a visual check, or the record to be audited).
+   Size items so one fresh agent can settle one in minutes: "nothing overflows,
+   all 412 pages" is illegal; twelve items of ~35 pages each are legal.
+2. **Adopt (consensus).** Verifiers audit **coverage**, not pages: is every
+   applicable defect category present, every phase gate, every request in the
+   brief, every ISSUES row? They mint missing items as claims; the primary adds
+   them. Only then is the list official.
+3. **Grow, never shrink.** Findings append items, each with the same coverage
+   audit. Items are never deleted, merged away, or reworded to pass.
+4. **Close per item.** Each closure runs the ordinary loop: independent
+   verifiers re-derive that item's evidence. `visual` items are executed by the
+   primary at the resolution the judgment needs and written into the row; on
+   those, the swarm audits the *record* — page range fully covered, observations
+   citing concrete pages, any numbers re-running — because verifiers never see
+   images.
+5. **Re-validate the whole list.** When every item is closed, the checklist is
+   validated again in full: the primary re-reads each item and a consensus loop
+   double-checks each one, in waves. A failing item reopens and the loop
+   resumes; a gap found at this stage becomes a new item rather than a shrug.
+6. **DONE** = every item `closed` by consensus + the full re-validation passed +
+   the plain-English report to the operator. Anything the operator chooses to
+   waive is recorded in their own words in the Waived section — agents cannot
+   waive their own items.
+
+Honest residue (unchanged): perception has one channel by design. A claim with no
+text proxy is closed only as far as the primary's written observations cohere and
+the operator's spot-checks reach. The checklist removes hiding places for errors;
+it does not remove the primary's eyes from the critical path.
 
 ## Efficiency rules (anti-cycle-burn — the failure modes are known)
 

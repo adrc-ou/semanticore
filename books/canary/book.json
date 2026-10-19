@@ -2,7 +2,7 @@
  "title": "Canary — synthetic engine fixture (not a document)",
  "profile": 2,
  "lang": "en-US",
- "producer": "pds tagged-pdf engine",
+ "producer": "Semanticore tagged-pdf engine",
  "creator": "workshop selftest",
  "output": {
   "2": "out/canary.pdf",

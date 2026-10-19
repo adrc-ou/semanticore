@@ -80,7 +80,7 @@ class EmbedFont:
             warr.append(g)
             warr.append(Array([num(metrics.get(order[g], (0, 0))[0] * 1000.0 / upem)]))
 
-        base = "PDS" + res_name.lstrip("/").upper().replace("-", "") + "+" + \
+        base = "SEMANTICORE" + res_name.lstrip("/").upper().replace("-", "") + "+" + \
                str(f["name"].getDebugName(4)).replace(" ", "")
         fd = pdf.make_indirect(Dictionary(
             Type=Name("/FontDescriptor"), FontName=Name("/" + base), Flags=flags,
@@ -254,7 +254,7 @@ class Writer:
 
     # ---- finalize ----
     def finalize(self, path, doc_root, title, lang="en-US",
-                 producer="pds tagged-pdf builder", creator="",
+                 producer="Semanticore tagged-pdf builder", creator="",
                  date="D:20261012120000Z", date_x="2026-10-12T12:00:00Z",
                  page_labels=None, outlines=None, ua_part=1):
         pdf = self.pdf

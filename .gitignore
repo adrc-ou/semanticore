@@ -1,6 +1,9 @@
 # toolchain (rebuild: bin/setup_env.sh)
 venv/
 tools/
+# ComfyUI workspace mount — harness-provided when ComfyUI is available; it is a
+# runtime directory (nodes/models/input/output/temp/user), never project content.
+/comfyui/
 # REPO = TOOLING ONLY. Books are work product, not versioned here:
 #   books/*    real remediation projects (user ships them separately)
 #   kept:      TEMPLATE + canary (synthetic regression fixture)

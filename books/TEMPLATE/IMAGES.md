@@ -1,5 +1,11 @@
 # <book> IMAGE ledger — one row per figure restored/generated
 
+Capability gate — record once per session, before any restoration row
+(`./bin/comfy_probe.py --json`; meaning in docs/comfyui-ops.md §1):
+
+| date | verdict | what it unlocked / what fell back |
+|---|---|---|
+
 | figure | class | rounds | chosen | objective scores (imgctl score) | storage_kB | notes / rubric drift |
 |---|---|---|---|---|---|---|
 

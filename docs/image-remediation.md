@@ -1,9 +1,13 @@
 # Image remediation — policy, restoration protocol, selection rubric
 
-Authority: user directive 2026-10-12 (ComfyUI + diffusion restoration
-authorized for degraded scans; accessibility wins ties; no creative
-embellishment; storage ≤150 GB on the Comfy host; verify own outputs;
-bounded attempts then choose-best-and-move-on).
+Restoration policy: diffusion restoration via ComfyUI is authorized for
+degraded scans; accessibility wins ties; no creative embellishment; verify own
+outputs; bounded attempts then choose-best-and-move-on. ComfyUI is an
+*environment* capability: whether it exists here, and how it is reached, comes
+from the harness, and the ladder's restoration rung applies only where the
+capability gate (docs/comfyui-ops.md §1) says it does. Storage budget likewise
+belongs to the project: a hard 150 GB ceiling over models, inputs and outputs
+(docs/comfyui-ops.md §7).
 
 ## 1. Preserve-first ladder (apply top-down; descend only when the level
 above cannot represent the content faithfully + accessibly)
@@ -80,12 +84,19 @@ already records each line's true visual extent. Engine contract:
 
 ## 5. Restoration attempt protocol (bounded, logged — never a loop)
 
+0. Gate: run `./bin/comfy_probe.py` this session (docs/comfyui-ops.md §1).
+   Its verdict decides whether steps 2–5 below can happen at all; ABSENT or
+   UNREACHABLE → skip to the fallback order (comfyui-ops §6) and ledger the
+   verdict. Never assume the rung exists because a past session used it.
 1. Prep: source crop (native res), palette/geometry measure, classify
-   (rubric class), pick pipeline (comfyui-ops §pipelines), note mask needs
+   (rubric class), pick pipeline (comfyui-ops §5), note mask needs
    (text holes, wrap silhouette, gutter shadows to avoid).
 2. Generate K=4 seeds/attempt-round. Each round: escalate TECHNIQUE once
    on a specific failure (mask tighter / controlnet weight / lower denoise
-   / recursive edit on failing region), don't just re-roll seeds.
+   / recursive edit on failing region), don't just re-roll seeds. The
+   analogous budgets for *engineering* attempts — installs, custom nodes,
+   novel pipelines, model hunts — are comfyui-ops §12: state what counts as
+   working and what means stop, then pivot with a written note.
 3. Verify EVERY candidate personally (ReadMediaFile native-res or contact
    sheet + objective pre-scores via imgctl score). Never accept unseen.
 4. Score with rubric (§6): hard gates first (instant reject), then weighted
@@ -136,8 +147,11 @@ images/rubrics/ with a line in the book STYLE-GUIDE.md.
 
 ## 7. What is NOT yet proven (mark of honesty)
 
-- All ComfyUI pipeline specifics are designs until first real contact
-  (see docs/comfyui-ops.md "validate-on-arrival checklist").
+- The restoration rung has never carried a real figure end to end: the gate
+  and the transport are proven, model inventories and rubric weights are not
+  (docs/comfyui-ops.md §8). Capability is environment-specific — the probe
+  answers it per session, and "no ComfyUI here" is a normal answer, not a
+  defect to route around.
 - rubric weights are priors tuned from general practice; recalibrate per
   book in the ledger (note drift in STYLE-GUIDE, not here).
 - The engine supports band-figures + per-line widths NOW (tested);
